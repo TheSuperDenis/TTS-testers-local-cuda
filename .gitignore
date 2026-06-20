@@ -1,0 +1,82 @@
+# Model/download caches
+/.cache/
+/models/
+/model-cache/
+/hf-cache/
+/huggingface/
+/torch/
+/tts/
+
+# Generated TTS outputs
+/output/
+/outputs/
+/runs/
+/artifacts/
+**/.parts/
+
+# Local voice references and prompts
+/*.wav
+/reference.txt
+/voice-reference.txt
+/transcript.txt
+/*reference*.txt
+/voice*.txt
+/prompt.txt
+/voices/*
+!/voices/README.md
+
+# Model weights and large ML artifacts
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.onnx
+*.gguf
+*.ggml
+*.npz
+*.npy
+
+# Docker image exports and local Docker artifacts
+/docker-images/
+/image-exports/
+*.docker.tar
+*.image.tar
+*.oci.tar
+*.tar
+*.tar.gz
+*.tar.zst
+*.tgz
+
+# Python/local tooling noise
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+
+# Logs/temp files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/

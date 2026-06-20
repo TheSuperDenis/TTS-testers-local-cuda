@@ -1,0 +1,61 @@
+Local Testing Only License v1.0
+
+Copyright (c) 2026 TTS Testers
+
+This repository is source-available for local testing and evaluation only. It is
+not licensed as open source.
+
+1. Permission Granted
+
+You may:
+
+- View and clone this repository.
+- Modify the source code for your own local testing.
+- Build and run the Docker containers locally on machines you control.
+- Use the launcher to evaluate compatible local TTS and voice-cloning models.
+
+2. Restrictions
+
+You may not:
+
+- Use this repository, modified versions, Dockerfiles, Docker images,
+  containers, or generated derivative service bundles for commercial purposes.
+- Sell, rent, sublicense, host, provide as a service, or otherwise monetize this
+  repository or any derivative work based on it.
+- Redistribute, publish, upload, sell, transfer, or package built Docker images,
+  containers, model weights, downloaded caches, generated service bundles, or
+  other built artifacts from this repository.
+- Include proprietary voice samples, transcripts, credentials, API keys, model
+  weights, generated outputs, or private user data in public forks, commits,
+  images, or redistributed artifacts.
+- Use this repository to clone, synthesize, or distribute voices without all
+  permissions, consents, and rights required by applicable law.
+
+3. Third-Party Software and Models
+
+This repository may download, install, or interoperate with third-party
+libraries, model code, model weights, and tools. Those third-party materials are
+not licensed by this license. You are responsible for reviewing and complying
+with every third-party license, model license, terms of service, and usage
+restriction before using any model or dependency.
+
+4. No Warranty
+
+The repository is provided "as is", without warranty of any kind, express or
+implied, including but not limited to warranties of merchantability, fitness for
+a particular purpose, non-infringement, model safety, voice-rights compliance,
+or legal compliance.
+
+5. Limitation of Liability
+
+The authors and contributors are not liable for any claim, damage, loss,
+liability, or legal issue arising from use, misuse, redistribution, model output,
+voice cloning, third-party dependencies, or failure to comply with applicable
+laws or third-party licenses.
+
+6. Termination
+
+Any permission granted by this license terminates automatically if you violate
+its terms. After termination, you must stop using the repository and delete any
+copies, modified versions, built containers, Docker images, cached model files,
+and derivative artifacts that were created under this license.

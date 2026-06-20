@@ -1,0 +1,170 @@
+name: xttsv2
+
+services:
+  xtts:
+    profiles:
+      - xtts
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: xttsv2-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      COQUI_TOS_AGREED: "${COQUI_TOS_AGREED:-1}"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TQDM_DISABLE: "1"
+      TTS_HOME: /models/tts
+      XTTS_LANGUAGE: "${XTTS_LANGUAGE:-en}"
+      XTTS_OUTPUT_DIR: /app/output
+      XTTS_SPEAKER_WAV: "${XTTS_SPEAKER_WAV:-/workspace/reference.wav}"
+      XTTS_SPEAKER_TEXT: "${XTTS_SPEAKER_TEXT:-/workspace/reference.txt}"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./voices:/app/voices
+      - ./:/workspace:ro
+      - ./prompt.txt:/app/prompt.txt:ro
+      - ./.cache/tts:/models/tts
+      - ./.cache/huggingface:/models/huggingface
+
+  qwen:
+    profiles:
+      - qwen
+    build:
+      context: .
+      dockerfile: Dockerfile.qwen
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: qwen3tts-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      QWEN_ATTN_IMPLEMENTATION: "${QWEN_ATTN_IMPLEMENTATION:-sdpa}"
+      QWEN_LANGUAGE: "${QWEN_LANGUAGE:-English}"
+      QWEN_MODEL_ID: "${QWEN_MODEL_ID:-Qwen/Qwen3-TTS-12Hz-0.6B-Base}"
+      QWEN_OUTPUT_DIR: /app/output/qwen
+      QWEN_REF_AUDIO: "${QWEN_REF_AUDIO:-/workspace/reference.wav}"
+      QWEN_REF_TEXT_FILE: "${QWEN_REF_TEXT_FILE:-/workspace/reference.txt}"
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./flash_attn:/app/flash_attn:ro
+      - ./xtts_service:/app/xtts_service:ro
+      - ./qwen_service:/app/qwen_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+
+  miotts:
+    profiles:
+      - miotts
+    build:
+      context: .
+      dockerfile: Dockerfile.miotts
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: miotts-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      MIOTTS_CODEC_MODEL: "${MIOTTS_CODEC_MODEL:-Aratako/MioCodec-25Hz-24kHz}"
+      MIOTTS_CHUNK_CHARS: "${MIOTTS_CHUNK_CHARS:-160}"
+      MIOTTS_MAX_NEW_TOKENS: "${MIOTTS_MAX_NEW_TOKENS:-520}"
+      MIOTTS_MAX_TOKEN_OVERHEAD: "${MIOTTS_MAX_TOKEN_OVERHEAD:-80}"
+      MIOTTS_MAX_TOKENS_PER_CHAR: "${MIOTTS_MAX_TOKENS_PER_CHAR:-3.0}"
+      MIOTTS_MODEL_ID: "${MIOTTS_MODEL_ID:-Aratako/MioTTS-0.1B}"
+      MIOTTS_NO_REPEAT_NGRAM_SIZE: "${MIOTTS_NO_REPEAT_NGRAM_SIZE:-6}"
+      MIOTTS_OUTPUT_DIR: /app/output/miotts
+      MIOTTS_REF_AUDIO: "${MIOTTS_REF_AUDIO:-/workspace/reference.wav}"
+      MIOTTS_REF_TEXT_FILE: "${MIOTTS_REF_TEXT_FILE:-/workspace/reference.txt}"
+      MIOTTS_REPETITION_PENALTY: "${MIOTTS_REPETITION_PENALTY:-1.15}"
+      MIOTTS_TEMPERATURE: "${MIOTTS_TEMPERATURE:-0.55}"
+      MIOTTS_TOP_P: "${MIOTTS_TOP_P:-0.85}"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TORCH_HOME: /models/torch
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./miotts_service:/app/miotts_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/torch:/models/torch
+
+  luxtts:
+    profiles:
+      - luxtts
+    build:
+      context: .
+      dockerfile: Dockerfile.luxtts
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: luxtts-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      LUXTTS_CHUNK_CHARS: "${LUXTTS_CHUNK_CHARS:-160}"
+      LUXTTS_MODEL_ID: "${LUXTTS_MODEL_ID:-YatharthS/LuxTTS}"
+      LUXTTS_NUM_STEPS: "${LUXTTS_NUM_STEPS:-6}"
+      LUXTTS_OUTPUT_DIR: /app/output/luxtts
+      LUXTTS_PROMPT_DURATION: "${LUXTTS_PROMPT_DURATION:-1000.0}"
+      LUXTTS_REF_AUDIO: "${LUXTTS_REF_AUDIO:-/workspace/reference.wav}"
+      LUXTTS_REF_TEXT_FILE: "${LUXTTS_REF_TEXT_FILE:-/workspace/reference.txt}"
+      LUXTTS_SPEED: "${LUXTTS_SPEED:-0.68}"
+      LUXTTS_T_SHIFT: "${LUXTTS_T_SHIFT:-0.35}"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TORCH_HOME: /models/torch
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./luxtts_service:/app/luxtts_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/torch:/models/torch
