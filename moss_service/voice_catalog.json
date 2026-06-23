@@ -1,0 +1,28 @@
+[
+  {
+    "id": "reference-clone",
+    "mode": "clone",
+    "displayName": "Reference voice clone",
+    "voiceId": "",
+    "group": "Local voice clone",
+    "description": "Use your local reference WAV. MOSS-TTS-Nano ONNX does not need a transcript."
+  },
+  {
+    "id": "ava",
+    "mode": "preset",
+    "displayName": "Ava",
+    "voiceId": "Ava",
+    "group": "English Female",
+    "sampleName": "EN The Bitter Lesson",
+    "description": "Official MOSS-TTS-Nano built-in voice labeled English Female by upstream."
+  },
+  {
+    "id": "bella",
+    "mode": "preset",
+    "displayName": "Bella",
+    "voiceId": "Bella",
+    "group": "English Female",
+    "sampleName": "EN A Gentle Reminder",
+    "description": "Official MOSS-TTS-Nano built-in voice labeled English Female by upstream."
+  }
+]

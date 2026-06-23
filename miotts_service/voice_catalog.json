@@ -1,0 +1,16 @@
+[
+  {
+    "id": "reference-clone",
+    "mode": "clone",
+    "displayName": "Reference voice clone",
+    "description": "Use your local reference WAV and optional transcript."
+  },
+  {
+    "id": "en-female",
+    "mode": "preset",
+    "displayName": "English female",
+    "presetId": "en_female",
+    "description": "Official MioTTS English female reference preset.",
+    "sourceUrl": "https://raw.githubusercontent.com/Aratako/MioTTS-Inference/main/presets/en_female.pt"
+  }
+]

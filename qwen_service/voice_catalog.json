@@ -1,0 +1,49 @@
+[
+  {
+    "id": "reference-clone",
+    "mode": "clone",
+    "displayName": "Reference voice clone",
+    "description": "Use your local reference WAV and transcript.",
+    "modelId": "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+  },
+  {
+    "id": "serena",
+    "mode": "custom_voice",
+    "displayName": "Serena",
+    "speaker": "Serena",
+    "modelId": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "nativeLanguage": "Chinese",
+    "description": "Warm, gentle young female voice.",
+    "instruct": "Speak with a warm, gentle, relaxed adult feminine tone and a slightly lower pitch."
+  },
+  {
+    "id": "vivian",
+    "mode": "custom_voice",
+    "displayName": "Vivian",
+    "speaker": "Vivian",
+    "modelId": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "nativeLanguage": "Chinese",
+    "description": "Bright, slightly edgy young female voice.",
+    "instruct": "Speak with a relaxed adult feminine tone, softer brightness, and measured pacing."
+  },
+  {
+    "id": "sohee",
+    "mode": "custom_voice",
+    "displayName": "Sohee",
+    "speaker": "Sohee",
+    "modelId": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "nativeLanguage": "Korean",
+    "description": "Warm Korean female voice with rich emotion.",
+    "instruct": "Speak with a warm, expressive adult feminine tone and relaxed pacing."
+  },
+  {
+    "id": "ono-anna",
+    "mode": "custom_voice",
+    "displayName": "Ono Anna",
+    "speaker": "Ono_Anna",
+    "modelId": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "nativeLanguage": "Japanese",
+    "description": "Playful Japanese female voice with a light, nimble timbre.",
+    "instruct": "Speak with a natural adult feminine tone, soft energy, and clear pacing."
+  }
+]

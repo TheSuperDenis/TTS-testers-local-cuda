@@ -7,6 +7,7 @@ import re
 import shutil
 import sys
 import time
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -22,11 +23,16 @@ PROMPT = "miotts0.1b> "
 
 @dataclass
 class RuntimeConfig:
+    voice_mode: str
     model_id: str
     codec_model_id: str
     output_dir: Path
-    ref_audio: Path
+    ref_audio: Path | None
     ref_text_file: Path | None
+    preset_id: str
+    preset_name: str
+    preset_url: str
+    presets_dir: Path
     chunk_chars: int
     pause_ms: int
     keep_parts: bool
@@ -55,12 +61,18 @@ class MioRuntime:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        voice_mode = normalize_voice_mode(args.voice_mode)
         config = RuntimeConfig(
+            voice_mode=voice_mode,
             model_id=args.model_id,
             codec_model_id=args.codec_model_id,
             output_dir=Path(args.output_dir),
-            ref_audio=required_path(args.ref_audio, "reference audio"),
+            ref_audio=required_path(args.ref_audio, "reference audio") if voice_mode == "clone" else optional_path(args.ref_audio, "reference audio"),
             ref_text_file=optional_path(args.ref_text_file, "reference transcript"),
+            preset_id=args.preset_id,
+            preset_name=args.preset_name,
+            preset_url=args.preset_url,
+            presets_dir=Path(args.presets_dir),
             chunk_chars=args.chunk_chars,
             pause_ms=args.pause_ms,
             keep_parts=args.keep_parts,
@@ -109,11 +121,16 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--interactive", action="store_true", help="Read text from stdin repeatedly.")
     parser.add_argument("--text", help="Synthesize one text string and exit.")
     parser.add_argument("--prompt-file", help="Read one UTF-8 text file and exit.")
+    parser.add_argument("--voice-mode", default=os.getenv("MIOTTS_VOICE_MODE", "clone"))
     parser.add_argument("--model-id", default=os.getenv("MIOTTS_MODEL_ID", DEFAULT_MODEL))
     parser.add_argument("--codec-model-id", default=os.getenv("MIOTTS_CODEC_MODEL", DEFAULT_CODEC_MODEL))
     parser.add_argument("--output-dir", default=os.getenv("MIOTTS_OUTPUT_DIR", "/app/output/miotts"))
     parser.add_argument("--ref-audio", default=os.getenv("MIOTTS_REF_AUDIO", "/workspace/reference.wav"))
     parser.add_argument("--ref-text-file", default=os.getenv("MIOTTS_REF_TEXT_FILE", "/workspace/reference.txt"))
+    parser.add_argument("--preset-id", default=os.getenv("MIOTTS_PRESET_ID", ""))
+    parser.add_argument("--preset-name", default=os.getenv("MIOTTS_PRESET_NAME", ""))
+    parser.add_argument("--preset-url", default=os.getenv("MIOTTS_PRESET_URL", ""))
+    parser.add_argument("--presets-dir", default=os.getenv("MIOTTS_PRESETS_DIR", "/models/miotts/presets"))
     parser.add_argument("--chunk-chars", type=int, default=int(os.getenv("MIOTTS_CHUNK_CHARS", "160")))
     parser.add_argument("--pause-ms", type=int, default=int(os.getenv("MIOTTS_PAUSE_MS", "180")))
     parser.add_argument("--temperature", type=float, default=float(os.getenv("MIOTTS_TEMPERATURE", "0.55")))
@@ -136,6 +153,15 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def normalize_voice_mode(value: str) -> str:
+    normalized = (value or "clone").strip().lower().replace("-", "_")
+    if normalized in {"clone", "reference", "reference_clone", "voice_clone"}:
+        return "clone"
+    if normalized in {"preset", "official_preset"}:
+        return "preset"
+    raise ValueError(f"unsupported MioTTS voice mode '{value}'. Use clone or preset.")
+
+
 def required_path(value: str, label: str) -> Path:
     path = Path(value)
     if path.exists():
@@ -149,7 +175,7 @@ def optional_path(value: str, label: str) -> Path | None:
     path = Path(value)
     if path.exists():
         return path
-    raise ValueError(f"{label} not found at {path}")
+    return None
 
 
 def load_runtime(config: RuntimeConfig) -> MioRuntime:
@@ -184,15 +210,25 @@ def load_runtime(config: RuntimeConfig) -> MioRuntime:
     sample_rate = int(codec.config.sample_rate)
     print(f"Codec loaded in {time.perf_counter() - codec_started:.1f}s at {sample_rate} Hz.", flush=True)
 
-    print(f"Voice clone sample: {config.ref_audio}", flush=True)
     reference_started = time.perf_counter()
-    reference_waveform = load_audio(str(config.ref_audio), sample_rate=sample_rate)
-    reference_waveform = trim_reference(reference_waveform, sample_rate, config.reference_max_seconds)
-    reference_waveform = reference_waveform.to(device=device, dtype=torch.float32)
-    with torch.inference_mode():
-        ref_features = codec.encode(reference_waveform, return_content=False, return_global=True)
-    global_embedding = ref_features.global_embedding
-    print(f"Voice clone embedding prepared in {time.perf_counter() - reference_started:.1f}s.", flush=True)
+    if config.voice_mode == "preset":
+        global_embedding = load_preset_embedding(torch, config, device)
+        print(
+            f"Official MioTTS preset loaded: {config.preset_name or config.preset_id} ({config.preset_id}) "
+            f"in {time.perf_counter() - reference_started:.1f}s.",
+            flush=True,
+        )
+    else:
+        if config.ref_audio is None:
+            raise RuntimeError("MioTTS voice cloning requires a reference WAV.")
+        print(f"Voice clone sample: {config.ref_audio}", flush=True)
+        reference_waveform = load_audio(str(config.ref_audio), sample_rate=sample_rate)
+        reference_waveform = trim_reference(reference_waveform, sample_rate, config.reference_max_seconds)
+        reference_waveform = reference_waveform.to(device=device, dtype=torch.float32)
+        with torch.inference_mode():
+            ref_features = codec.encode(reference_waveform, return_content=False, return_global=True)
+        global_embedding = ref_features.global_embedding
+        print(f"Voice clone embedding prepared in {time.perf_counter() - reference_started:.1f}s.", flush=True)
 
     reference_text = ""
     if config.ref_text_file:
@@ -209,6 +245,24 @@ def load_runtime(config: RuntimeConfig) -> MioRuntime:
         sample_rate=sample_rate,
         reference_text=reference_text,
     )
+
+
+def load_preset_embedding(torch, config: RuntimeConfig, device: str):
+    if not config.preset_id:
+        raise RuntimeError("MioTTS preset mode requires MIOTTS_PRESET_ID.")
+    if not config.preset_url:
+        raise RuntimeError("MioTTS preset mode requires MIOTTS_PRESET_URL.")
+
+    config.presets_dir.mkdir(parents=True, exist_ok=True)
+    preset_path = config.presets_dir / f"{config.preset_id}.pt"
+    if not preset_path.exists():
+        print(f"Downloading MioTTS preset {config.preset_id}...", flush=True)
+        urllib.request.urlretrieve(config.preset_url, preset_path)
+
+    embedding = torch.load(preset_path, map_location="cpu")
+    if not hasattr(embedding, "to"):
+        raise RuntimeError(f"MioTTS preset {preset_path} did not contain a tensor embedding.")
+    return embedding.to(device=device, dtype=torch.float32)
 
 
 def trim_reference(waveform, sample_rate: int, max_seconds: float):
@@ -484,9 +538,13 @@ def write_metadata(
         "reference_max_seconds": config.reference_max_seconds,
         "sample_rate": runtime.sample_rate,
         "source_text": source_text,
+        "voice_mode": config.voice_mode,
+        "preset_id": config.preset_id,
+        "preset_name": config.preset_name,
+        "preset_url": config.preset_url,
         "speaker_reference_text": runtime.reference_text,
         "speaker_reference_text_path": str(config.ref_text_file) if config.ref_text_file else "",
-        "speaker_wav": str(config.ref_audio),
+        "speaker_wav": str(config.ref_audio) if config.ref_audio else "",
         "temperature": config.temperature,
         "top_p": config.top_p,
     }

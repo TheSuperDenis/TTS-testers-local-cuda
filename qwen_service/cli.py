@@ -15,42 +15,57 @@ from xtts_service.text_splitter import split_long_text
 
 
 DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+DEFAULT_CUSTOM_MODEL = "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
 PROMPT = "qwen0.6btts> "
 
 
 @dataclass
 class RuntimeConfig:
+    voice_mode: str
     model_id: str
     output_dir: Path
-    ref_audio: Path
-    ref_text_file: Path
+    ref_audio: Path | None
+    ref_text_file: Path | None
     language: str
     chunk_chars: int
     pause_ms: int
     keep_parts: bool
     attn_implementation: str
+    custom_speaker: str
+    custom_instruct: str
+    custom_voice_name: str
 
 
 @dataclass
 class QwenRuntime:
     model: object
-    voice_clone_prompt: object
+    voice_mode: str
+    voice_clone_prompt: object | None
     reference_text: str
+    custom_speaker: str
+    custom_instruct: str
+    custom_voice_name: str
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        voice_mode = normalize_voice_mode(args.voice_mode)
+        model_id = DEFAULT_CUSTOM_MODEL if voice_mode == "custom_voice" and args.model_id == DEFAULT_MODEL else args.model_id
         config = RuntimeConfig(
-            model_id=args.model_id,
+            voice_mode=voice_mode,
+            model_id=model_id,
             output_dir=Path(args.output_dir),
-            ref_audio=required_path(args.ref_audio, "reference audio"),
-            ref_text_file=required_path(args.ref_text_file, "reference transcript"),
+            ref_audio=required_path(args.ref_audio, "reference audio") if voice_mode == "clone" else optional_path(args.ref_audio),
+            ref_text_file=required_path(args.ref_text_file, "reference transcript") if voice_mode == "clone" else optional_path(args.ref_text_file),
             language=args.language,
             chunk_chars=args.chunk_chars,
             pause_ms=args.pause_ms,
             keep_parts=args.keep_parts,
             attn_implementation=args.attn_implementation,
+            custom_speaker=args.custom_speaker,
+            custom_instruct=args.custom_instruct,
+            custom_voice_name=args.custom_voice_name,
         )
     except ValueError as exc:
         print(f"Qwen startup failed: {exc}", file=sys.stderr, flush=True)
@@ -88,6 +103,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--interactive", action="store_true", help="Read text from stdin repeatedly.")
     parser.add_argument("--text", help="Synthesize one text string and exit.")
     parser.add_argument("--prompt-file", help="Read one UTF-8 text file and exit.")
+    parser.add_argument("--voice-mode", default=os.getenv("QWEN_VOICE_MODE", "clone"))
     parser.add_argument("--model-id", default=os.getenv("QWEN_MODEL_ID", DEFAULT_MODEL))
     parser.add_argument("--output-dir", default=os.getenv("QWEN_OUTPUT_DIR", "/app/output/qwen"))
     parser.add_argument("--ref-audio", default=os.getenv("QWEN_REF_AUDIO", "/workspace/reference.wav"))
@@ -96,8 +112,20 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--chunk-chars", type=int, default=int(os.getenv("QWEN_CHUNK_CHARS", "360")))
     parser.add_argument("--pause-ms", type=int, default=int(os.getenv("QWEN_PAUSE_MS", "180")))
     parser.add_argument("--attn-implementation", default=os.getenv("QWEN_ATTN_IMPLEMENTATION", "sdpa"))
+    parser.add_argument("--custom-speaker", default=os.getenv("QWEN_CUSTOM_SPEAKER", "Serena"))
+    parser.add_argument("--custom-instruct", default=os.getenv("QWEN_CUSTOM_INSTRUCT", ""))
+    parser.add_argument("--custom-voice-name", default=os.getenv("QWEN_CUSTOM_VOICE_NAME", "Serena"))
     parser.add_argument("--keep-parts", action="store_true")
     return parser.parse_args(argv)
+
+
+def normalize_voice_mode(value: str) -> str:
+    normalized = (value or "clone").strip().lower().replace("-", "_")
+    if normalized in {"clone", "reference", "reference_clone", "voice_clone"}:
+        return "clone"
+    if normalized in {"custom", "custom_voice", "preset"}:
+        return "custom_voice"
+    raise ValueError(f"unsupported Qwen voice mode '{value}'. Use clone or custom_voice.")
 
 
 def required_path(value: str, label: str) -> Path:
@@ -105,6 +133,13 @@ def required_path(value: str, label: str) -> Path:
     if path.exists():
         return path
     raise ValueError(f"{label} not found at {path}")
+
+
+def optional_path(value: str) -> Path | None:
+    if not value:
+        return None
+    path = Path(value)
+    return path if path.exists() else None
 
 
 def load_runtime(config: RuntimeConfig) -> QwenRuntime:
@@ -127,6 +162,26 @@ def load_runtime(config: RuntimeConfig) -> QwenRuntime:
     )
     print(f"Model loaded in {time.perf_counter() - loaded_at:.1f}s.", flush=True)
 
+    if config.voice_mode == "custom_voice":
+        print(
+            f"Using Qwen CustomVoice preset: {config.custom_voice_name} ({config.custom_speaker})",
+            flush=True,
+        )
+        if config.custom_instruct:
+            print(f"Qwen style instruction: {config.custom_instruct}", flush=True)
+        return QwenRuntime(
+            model=model,
+            voice_mode=config.voice_mode,
+            voice_clone_prompt=None,
+            reference_text="",
+            custom_speaker=config.custom_speaker,
+            custom_instruct=config.custom_instruct,
+            custom_voice_name=config.custom_voice_name,
+        )
+
+    if config.ref_audio is None or config.ref_text_file is None:
+        raise RuntimeError("Qwen voice cloning requires both a reference WAV and a reference transcript.")
+
     reference_text = config.ref_text_file.read_text(encoding="utf-8").strip()
     print(f"Voice clone sample: {config.ref_audio}", flush=True)
     print(f"Voice reference transcript: {config.ref_text_file}", flush=True)
@@ -139,7 +194,15 @@ def load_runtime(config: RuntimeConfig) -> QwenRuntime:
         x_vector_only_mode=False,
     )
     print(f"Voice clone prompt prepared in {time.perf_counter() - prompt_started:.1f}s.", flush=True)
-    return QwenRuntime(model=model, voice_clone_prompt=prompt, reference_text=reference_text)
+    return QwenRuntime(
+        model=model,
+        voice_mode=config.voice_mode,
+        voice_clone_prompt=prompt,
+        reference_text=reference_text,
+        custom_speaker="",
+        custom_instruct="",
+        custom_voice_name="Reference voice clone",
+    )
 
 
 def interactive_loop(runtime: QwenRuntime, config: RuntimeConfig) -> int:
@@ -205,11 +268,20 @@ def synthesize(runtime: QwenRuntime, config: RuntimeConfig, text: str) -> int:
     for index, chunk in enumerate(chunks, start=1):
         part_path = parts_dir / f"{index:04d}.wav"
         chunk_started = time.perf_counter()
-        wavs, sample_rate = runtime.model.generate_voice_clone(
-            text=chunk,
-            language=config.language,
-            voice_clone_prompt=runtime.voice_clone_prompt,
-        )
+        if runtime.voice_mode == "custom_voice":
+            wavs, sample_rate = runtime.model.generate_custom_voice(
+                text=chunk,
+                language=config.language,
+                speaker=runtime.custom_speaker,
+                instruct=runtime.custom_instruct or None,
+                non_streaming_mode=True,
+            )
+        else:
+            wavs, sample_rate = runtime.model.generate_voice_clone(
+                text=chunk,
+                language=config.language,
+                voice_clone_prompt=runtime.voice_clone_prompt,
+            )
         write_wav(part_path, wavs[0], sample_rate)
         part_paths.append(part_path)
         print(f"  chunk {index}/{len(chunks)}: {time.perf_counter() - chunk_started:.1f}s", flush=True)
@@ -305,9 +377,13 @@ def write_metadata(
         "pause_ms": config.pause_ms,
         "realtime_factor": round(rtf, 4),
         "source_text": source_text,
+        "voice_mode": runtime.voice_mode,
+        "custom_speaker": runtime.custom_speaker,
+        "custom_instruct": runtime.custom_instruct,
+        "custom_voice_name": runtime.custom_voice_name,
         "speaker_reference_text": runtime.reference_text,
-        "speaker_reference_text_path": str(config.ref_text_file),
-        "speaker_wav": str(config.ref_audio),
+        "speaker_reference_text_path": str(config.ref_text_file) if config.ref_text_file else "",
+        "speaker_wav": str(config.ref_audio) if config.ref_audio else "",
     }
     output_path.with_suffix(".json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 

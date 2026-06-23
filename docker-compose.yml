@@ -58,11 +58,15 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
       NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
       QWEN_ATTN_IMPLEMENTATION: "${QWEN_ATTN_IMPLEMENTATION:-sdpa}"
+      QWEN_CUSTOM_INSTRUCT: "${QWEN_CUSTOM_INSTRUCT:-}"
+      QWEN_CUSTOM_SPEAKER: "${QWEN_CUSTOM_SPEAKER:-Serena}"
+      QWEN_CUSTOM_VOICE_NAME: "${QWEN_CUSTOM_VOICE_NAME:-Serena}"
       QWEN_LANGUAGE: "${QWEN_LANGUAGE:-English}"
       QWEN_MODEL_ID: "${QWEN_MODEL_ID:-Qwen/Qwen3-TTS-12Hz-0.6B-Base}"
       QWEN_OUTPUT_DIR: /app/output/qwen
       QWEN_REF_AUDIO: "${QWEN_REF_AUDIO:-/workspace/reference.wav}"
       QWEN_REF_TEXT_FILE: "${QWEN_REF_TEXT_FILE:-/workspace/reference.txt}"
+      QWEN_VOICE_MODE: "${QWEN_VOICE_MODE:-clone}"
       TQDM_DISABLE: "1"
     gpus:
       - driver: nvidia
@@ -102,11 +106,16 @@ services:
       MIOTTS_MODEL_ID: "${MIOTTS_MODEL_ID:-Aratako/MioTTS-0.1B}"
       MIOTTS_NO_REPEAT_NGRAM_SIZE: "${MIOTTS_NO_REPEAT_NGRAM_SIZE:-6}"
       MIOTTS_OUTPUT_DIR: /app/output/miotts
+      MIOTTS_PRESET_ID: "${MIOTTS_PRESET_ID:-}"
+      MIOTTS_PRESET_NAME: "${MIOTTS_PRESET_NAME:-}"
+      MIOTTS_PRESET_URL: "${MIOTTS_PRESET_URL:-}"
+      MIOTTS_PRESETS_DIR: /models/miotts/presets
       MIOTTS_REF_AUDIO: "${MIOTTS_REF_AUDIO:-/workspace/reference.wav}"
       MIOTTS_REF_TEXT_FILE: "${MIOTTS_REF_TEXT_FILE:-/workspace/reference.txt}"
       MIOTTS_REPETITION_PENALTY: "${MIOTTS_REPETITION_PENALTY:-1.15}"
       MIOTTS_TEMPERATURE: "${MIOTTS_TEMPERATURE:-0.55}"
       MIOTTS_TOP_P: "${MIOTTS_TOP_P:-0.85}"
+      MIOTTS_VOICE_MODE: "${MIOTTS_VOICE_MODE:-clone}"
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
       NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
       TORCH_HOME: /models/torch
@@ -167,4 +176,326 @@ services:
       - ./:/workspace:ro
       - ./prompt.txt:/workspace/prompt.txt:ro
       - ./.cache/huggingface:/models/huggingface
+      - ./.cache/miotts:/models/miotts
+      - ./.cache/torch:/models/torch
+
+  piper:
+    profiles:
+      - piper
+    build:
+      context: .
+      dockerfile: Dockerfile.piper
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        ORT_INDEX_URL: "${ORT_INDEX_URL:-https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-13-nightly/pypi/simple/}"
+        ORT_PRE: "${ORT_PRE:-1}"
+    image: piper-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      PIPER_CHUNK_CHARS: "${PIPER_CHUNK_CHARS:-160}"
+      PIPER_CONFIG_FILE: "${PIPER_CONFIG_FILE:-en/en_GB/cori/high/en_GB-cori-high.onnx.json}"
+      PIPER_LENGTH_SCALE: "${PIPER_LENGTH_SCALE:-1.08}"
+      PIPER_MODEL_DIR: /models/piper
+      PIPER_MODEL_FILE: "${PIPER_MODEL_FILE:-en/en_GB/cori/high/en_GB-cori-high.onnx}"
+      PIPER_MODEL_REPO: "${PIPER_MODEL_REPO:-rhasspy/piper-voices}"
+      PIPER_MODEL_REVISION: "${PIPER_MODEL_REVISION:-v1.0.0}"
+      PIPER_OUTPUT_DIR: /app/output/piper
+      PIPER_PAUSE_MS: "${PIPER_PAUSE_MS:-260}"
+      PIPER_SENTENCE_SILENCE: "${PIPER_SENTENCE_SILENCE:-0.22}"
+      PIPER_USE_CUDA: "${PIPER_USE_CUDA:-1}"
+      PIPER_VOICE_NAME: "${PIPER_VOICE_NAME:-en_GB Cori high}"
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./piper_service:/app/piper_service:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/piper:/models/piper
+
+  kokoro:
+    profiles:
+      - kokoro
+    build:
+      context: .
+      dockerfile: Dockerfile.kokoro
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+    image: kokoro-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      KOKORO_CHUNK_CHARS: "${KOKORO_CHUNK_CHARS:-220}"
+      KOKORO_LANG_CODE: "${KOKORO_LANG_CODE:-a}"
+      KOKORO_MODEL_ID: "${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}"
+      KOKORO_OUTPUT_DIR: /app/output/kokoro
+      KOKORO_PAUSE_MS: "${KOKORO_PAUSE_MS:-220}"
+      KOKORO_SPEED: "${KOKORO_SPEED:-0.95}"
+      KOKORO_USE_CUDA: "${KOKORO_USE_CUDA:-1}"
+      KOKORO_VOICE_ID: "${KOKORO_VOICE_ID:-af_heart}"
+      KOKORO_VOICE_NAME: "${KOKORO_VOICE_NAME:-American female Heart}"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TQDM_DISABLE: "1"
+      TORCH_HOME: /models/torch
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./kokoro_service:/app/kokoro_service:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/torch:/models/torch
+
+  kitten:
+    profiles:
+      - kitten
+    build:
+      context: .
+      dockerfile: Dockerfile.kitten
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        ORT_INDEX_URL: "${ORT_INDEX_URL:-https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-13-nightly/pypi/simple/}"
+        ORT_PRE: "${ORT_PRE:-1}"
+    image: kitten-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      KITTEN_CHUNK_CHARS: "${KITTEN_CHUNK_CHARS:-220}"
+      KITTEN_CLEAN_TEXT: "${KITTEN_CLEAN_TEXT:-1}"
+      KITTEN_MODEL_DIR: /models/kitten
+      KITTEN_MODEL_ID: "${KITTEN_MODEL_ID:-KittenML/kitten-tts-mini-0.8}"
+      KITTEN_OUTPUT_DIR: /app/output/kitten
+      KITTEN_PAUSE_MS: "${KITTEN_PAUSE_MS:-220}"
+      KITTEN_SPEED: "${KITTEN_SPEED:-1.0}"
+      KITTEN_USE_CUDA: "${KITTEN_USE_CUDA:-1}"
+      KITTEN_VOICE_ID: "${KITTEN_VOICE_ID:-expr-voice-2-f}"
+      KITTEN_VOICE_NAME: "${KITTEN_VOICE_NAME:-Bella}"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TQDM_DISABLE: "1"
+      TORCH_HOME: /models/torch
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./kitten_service:/app/kitten_service:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/kitten:/models/kitten
+      - ./.cache/torch:/models/torch
+
+  chatterbox:
+    profiles:
+      - chatterbox
+    build:
+      context: .
+      dockerfile: Dockerfile.chatterbox
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: chatterbox-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      CHATTERBOX_CFG_WEIGHT: "${CHATTERBOX_CFG_WEIGHT:-0.35}"
+      CHATTERBOX_CHUNK_CHARS: "${CHATTERBOX_CHUNK_CHARS:-220}"
+      CHATTERBOX_EXAGGERATION: "${CHATTERBOX_EXAGGERATION:-0.45}"
+      CHATTERBOX_MIN_P: "${CHATTERBOX_MIN_P:-0.05}"
+      CHATTERBOX_OUTPUT_DIR: /app/output/chatterbox
+      CHATTERBOX_PAUSE_MS: "${CHATTERBOX_PAUSE_MS:-220}"
+      CHATTERBOX_REF_AUDIO: "${CHATTERBOX_REF_AUDIO:-/workspace/reference.wav}"
+      CHATTERBOX_REPETITION_PENALTY: "${CHATTERBOX_REPETITION_PENALTY:-1.2}"
+      CHATTERBOX_TEMPERATURE: "${CHATTERBOX_TEMPERATURE:-0.8}"
+      CHATTERBOX_TOP_P: "${CHATTERBOX_TOP_P:-1.0}"
+      CHATTERBOX_USE_CUDA: "${CHATTERBOX_USE_CUDA:-1}"
+      CHATTERBOX_VOICE_MODE: "${CHATTERBOX_VOICE_MODE:-clone}"
+      CHATTERBOX_VOICE_NAME: "${CHATTERBOX_VOICE_NAME:-Reference voice clone}"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TORCH_HOME: /models/torch
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./chatterbox_service:/app/chatterbox_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/chatterbox:/models/chatterbox
+      - ./.cache/torch:/models/torch
+
+  sopro:
+    profiles:
+      - sopro
+    build:
+      context: .
+      dockerfile: Dockerfile.sopro
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: sopro-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      SOPRO_CACHE_DIR: /models/sopro
+      SOPRO_CHUNK_CHARS: "${SOPRO_CHUNK_CHARS:-220}"
+      SOPRO_MAX_FRAMES: "${SOPRO_MAX_FRAMES:-400}"
+      SOPRO_MODEL_ID: "${SOPRO_MODEL_ID:-samuel-vitorino/sopro}"
+      SOPRO_OUTPUT_DIR: /app/output/sopro
+      SOPRO_PAUSE_MS: "${SOPRO_PAUSE_MS:-220}"
+      SOPRO_REF_AUDIO: "${SOPRO_REF_AUDIO:-/workspace/reference.wav}"
+      SOPRO_REF_SECONDS: "${SOPRO_REF_SECONDS:-12.0}"
+      SOPRO_STYLE_STRENGTH: "${SOPRO_STYLE_STRENGTH:-1.2}"
+      SOPRO_TEMPERATURE: "${SOPRO_TEMPERATURE:-1.05}"
+      SOPRO_TOP_P: "${SOPRO_TOP_P:-0.9}"
+      SOPRO_USE_CUDA: "${SOPRO_USE_CUDA:-1}"
+      SOPRO_VOICE_MODE: "${SOPRO_VOICE_MODE:-clone}"
+      SOPRO_VOICE_NAME: "${SOPRO_VOICE_NAME:-Reference voice clone}"
+      TORCH_HOME: /models/torch
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./sopro_service:/app/sopro_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/sopro:/models/sopro
+      - ./.cache/torch:/models/torch
+
+  pockettts:
+    profiles:
+      - pockettts
+    build:
+      context: .
+      dockerfile: Dockerfile.pockettts
+    image: pockettts-local:cpu
+    environment:
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      HF_TOKEN: "${HF_TOKEN:-}"
+      HUGGING_FACE_HUB_TOKEN: "${HF_TOKEN:-}"
+      POCKETTTS_CHUNK_CHARS: "${POCKETTTS_CHUNK_CHARS:-220}"
+      POCKETTTS_FRAMES_AFTER_EOS: "${POCKETTTS_FRAMES_AFTER_EOS:-24}"
+      POCKETTTS_LANGUAGE: "${POCKETTTS_LANGUAGE:-english}"
+      POCKETTTS_MAX_TOKENS: "${POCKETTTS_MAX_TOKENS:-320}"
+      POCKETTTS_OUTPUT_DIR: /app/output/pockettts
+      POCKETTTS_PAUSE_MS: "${POCKETTTS_PAUSE_MS:-220}"
+      POCKETTTS_QUANTIZE: "${POCKETTTS_QUANTIZE:-0}"
+      POCKETTTS_REF_AUDIO: "${POCKETTTS_REF_AUDIO:-/workspace/reference.wav}"
+      POCKETTTS_TRUNCATE_REF: "${POCKETTTS_TRUNCATE_REF:-1}"
+      POCKETTTS_VOICE_ID: "${POCKETTTS_VOICE_ID:-reference-clone}"
+      POCKETTTS_VOICE_MODE: "${POCKETTTS_VOICE_MODE:-clone}"
+      POCKETTTS_VOICE_NAME: "${POCKETTTS_VOICE_NAME:-Reference voice clone}"
+      TQDM_DISABLE: "1"
+      XDG_CACHE_HOME: /models/pockettts
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./pockettts_service:/app/pockettts_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/pockettts:/models/pockettts
+
+  moss:
+    profiles:
+      - moss
+    build:
+      context: .
+      dockerfile: Dockerfile.moss
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+        ORT_INDEX_URL: "${ORT_INDEX_URL:-https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-13-nightly/pypi/simple/}"
+        ORT_PRE: "${ORT_PRE:-1}"
+    image: moss-tts-nano-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      MOSS_AUDIO_REPETITION_PENALTY: "${MOSS_AUDIO_REPETITION_PENALTY:-1.2}"
+      MOSS_AUDIO_TEMPERATURE: "${MOSS_AUDIO_TEMPERATURE:-0.8}"
+      MOSS_AUDIO_TOP_K: "${MOSS_AUDIO_TOP_K:-25}"
+      MOSS_AUDIO_TOP_P: "${MOSS_AUDIO_TOP_P:-0.95}"
+      MOSS_CPU_THREADS: "${MOSS_CPU_THREADS:-4}"
+      MOSS_ENABLE_WETEXT: "${MOSS_ENABLE_WETEXT:-0}"
+      MOSS_EXECUTION_PROVIDER: "${MOSS_EXECUTION_PROVIDER:-cuda}"
+      MOSS_MAX_NEW_FRAMES: "${MOSS_MAX_NEW_FRAMES:-375}"
+      MOSS_MODEL_DIR: /opt/moss-tts-nano/models
+      MOSS_NORMALIZE_TEXT: "${MOSS_NORMALIZE_TEXT:-1}"
+      MOSS_OUTPUT_DIR: /app/output/moss
+      MOSS_REALTIME_STREAMING_DECODE: "${MOSS_REALTIME_STREAMING_DECODE:-1}"
+      MOSS_REF_AUDIO: "${MOSS_REF_AUDIO:-/workspace/reference.wav}"
+      MOSS_SAMPLE_MODE: "${MOSS_SAMPLE_MODE:-fixed}"
+      MOSS_TEXT_TEMPERATURE: "${MOSS_TEXT_TEMPERATURE:-1.0}"
+      MOSS_TEXT_TOP_K: "${MOSS_TEXT_TOP_K:-50}"
+      MOSS_TEXT_TOP_P: "${MOSS_TEXT_TOP_P:-1.0}"
+      MOSS_VOICE_CLONE_MAX_TEXT_TOKENS: "${MOSS_VOICE_CLONE_MAX_TEXT_TOKENS:-75}"
+      MOSS_VOICE_ID: "${MOSS_VOICE_ID:-reference-clone}"
+      MOSS_VOICE_MODE: "${MOSS_VOICE_MODE:-clone}"
+      MOSS_VOICE_NAME: "${MOSS_VOICE_NAME:-Reference voice clone}"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TORCH_HOME: /models/torch
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./moss_service:/app/moss_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/moss:/opt/moss-tts-nano/models
       - ./.cache/torch:/models/torch

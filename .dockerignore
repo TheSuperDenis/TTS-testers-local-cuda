@@ -1,4 +1,6 @@
 .cache/
+.agents/
+.codex/
 .git/
 __pycache__/
 *.pyc
@@ -16,6 +18,7 @@ voice-reference.txt
 transcript.txt
 prompt.txt
 output/
+run with*.ps1.txt
 voices/*.wav
 voices/*.mp3
 voices/*.flac

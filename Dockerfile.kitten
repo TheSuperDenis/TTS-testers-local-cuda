@@ -1,0 +1,42 @@
+FROM python:3.11-slim-bookworm
+
+ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
+ARG TORCH_VERSION=2.11.0
+ARG ORT_INDEX_URL=https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-13-nightly/pypi/simple/
+ARG ORT_PRE=1
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        espeak-ng \
+        ffmpeg \
+        libespeak-ng1 \
+        libgomp1 \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --upgrade pip setuptools wheel
+RUN python -m pip install --no-cache-dir --index-url "${PYTORCH_INDEX_URL}" \
+    "torch==${TORCH_VERSION}"
+
+COPY requirements-kitten.txt /app/requirements-kitten.txt
+RUN python -m pip install --no-cache-dir -r /app/requirements-kitten.txt
+RUN python -m pip uninstall -y onnxruntime || true
+RUN python -m pip install --no-cache-dir coloredlogs flatbuffers numpy packaging protobuf sympy \
+    && if [ "${ORT_PRE}" = "1" ]; then \
+        python -m pip install --no-cache-dir --pre --index-url "${ORT_INDEX_URL}" onnxruntime-gpu; \
+    else \
+        python -m pip install --no-cache-dir --index-url "${ORT_INDEX_URL}" onnxruntime-gpu; \
+    fi
+
+COPY xtts_service /app/xtts_service
+COPY kitten_service /app/kitten_service
+
+ENTRYPOINT ["python", "-m", "kitten_service.cli"]
+CMD ["--interactive"]

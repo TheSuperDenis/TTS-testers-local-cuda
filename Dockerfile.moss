@@ -1,0 +1,53 @@
+FROM python:3.11-slim-bookworm
+
+ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
+ARG TORCH_VERSION=2.11.0
+ARG TORCHAUDIO_VERSION=2.11.0
+ARG ORT_INDEX_URL=https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-13-nightly/pypi/simple/
+ARG ORT_PRE=1
+ARG MOSS_TTS_NANO_REPO=https://github.com/OpenMOSS/MOSS-TTS-Nano.git
+ARG MOSS_TTS_NANO_REF=main
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app:/opt/moss-tts-nano
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        ffmpeg \
+        git \
+        libgomp1 \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --upgrade pip setuptools wheel
+RUN python -m pip install --no-cache-dir --index-url "${PYTORCH_INDEX_URL}" \
+    "torch==${TORCH_VERSION}" \
+    "torchaudio==${TORCHAUDIO_VERSION}"
+
+COPY requirements-moss.txt /app/requirements-moss.txt
+RUN python -m pip install --no-cache-dir -r /app/requirements-moss.txt
+RUN python -m pip uninstall -y onnxruntime || true
+RUN python -m pip install --no-cache-dir coloredlogs flatbuffers packaging protobuf sympy \
+    && if [ "${ORT_PRE}" = "1" ]; then \
+        python -m pip install --no-cache-dir --pre --index-url "${ORT_INDEX_URL}" onnxruntime-gpu; \
+    else \
+        python -m pip install --no-cache-dir --index-url "${ORT_INDEX_URL}" onnxruntime-gpu; \
+    fi
+
+RUN git clone --depth 1 "${MOSS_TTS_NANO_REPO}" /opt/moss-tts-nano \
+    && if [ "${MOSS_TTS_NANO_REF}" != "main" ]; then \
+        git -C /opt/moss-tts-nano fetch --depth 1 origin "${MOSS_TTS_NANO_REF}" \
+        && git -C /opt/moss-tts-nano checkout FETCH_HEAD; \
+    fi \
+    && rm -rf /opt/moss-tts-nano/.git
+
+COPY xtts_service /app/xtts_service
+COPY moss_service /app/moss_service
+
+ENTRYPOINT ["python", "-m", "moss_service.cli"]
+CMD ["--interactive"]

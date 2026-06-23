@@ -14,6 +14,11 @@
 /artifacts/
 **/.parts/
 
+# Local launcher scratch files
+/run with*.ps1.txt
+/.agents/
+/.codex/
+
 # Local voice references and prompts
 /*.wav
 /reference.txt

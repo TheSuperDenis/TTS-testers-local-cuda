@@ -1,0 +1,4 @@
+huggingface_hub>=0.23
+numpy>=1.24
+sentencepiece>=0.1.99
+soundfile

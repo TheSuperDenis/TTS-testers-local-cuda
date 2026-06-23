@@ -1,0 +1,4 @@
+huggingface_hub
+numpy
+piper-tts==1.4.2
+soundfile

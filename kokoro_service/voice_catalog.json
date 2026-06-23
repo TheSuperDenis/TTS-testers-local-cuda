@@ -1,0 +1,152 @@
+[
+  {
+    "id": "af_heart",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Heart",
+    "langCode": "a",
+    "grade": "A",
+    "targetQuality": "",
+    "trainingDuration": ""
+  },
+  {
+    "id": "af_alloy",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Alloy",
+    "langCode": "a",
+    "grade": "C",
+    "targetQuality": "B",
+    "trainingDuration": "MM minutes"
+  },
+  {
+    "id": "af_aoede",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Aoede",
+    "langCode": "a",
+    "grade": "C+",
+    "targetQuality": "B",
+    "trainingDuration": "H hours"
+  },
+  {
+    "id": "af_bella",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Bella",
+    "langCode": "a",
+    "grade": "A-",
+    "targetQuality": "A",
+    "trainingDuration": "HH hours"
+  },
+  {
+    "id": "af_jessica",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Jessica",
+    "langCode": "a",
+    "grade": "D",
+    "targetQuality": "C",
+    "trainingDuration": "MM minutes"
+  },
+  {
+    "id": "af_kore",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Kore",
+    "langCode": "a",
+    "grade": "C+",
+    "targetQuality": "B",
+    "trainingDuration": "H hours"
+  },
+  {
+    "id": "af_nicole",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Nicole",
+    "langCode": "a",
+    "grade": "B-",
+    "targetQuality": "B",
+    "trainingDuration": "HH hours"
+  },
+  {
+    "id": "af_nova",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Nova",
+    "langCode": "a",
+    "grade": "C",
+    "targetQuality": "B",
+    "trainingDuration": "MM minutes"
+  },
+  {
+    "id": "af_river",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "River",
+    "langCode": "a",
+    "grade": "D",
+    "targetQuality": "C",
+    "trainingDuration": "MM minutes"
+  },
+  {
+    "id": "af_sarah",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Sarah",
+    "langCode": "a",
+    "grade": "C+",
+    "targetQuality": "B",
+    "trainingDuration": "H hours"
+  },
+  {
+    "id": "af_sky",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Sky",
+    "langCode": "a",
+    "grade": "C-",
+    "targetQuality": "B",
+    "trainingDuration": "M minutes"
+  },
+  {
+    "id": "bf_alice",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Alice",
+    "langCode": "b",
+    "grade": "D",
+    "targetQuality": "C",
+    "trainingDuration": "MM minutes"
+  },
+  {
+    "id": "bf_emma",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Emma",
+    "langCode": "b",
+    "grade": "B-",
+    "targetQuality": "B",
+    "trainingDuration": "HH hours"
+  },
+  {
+    "id": "bf_isabella",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Isabella",
+    "langCode": "b",
+    "grade": "C",
+    "targetQuality": "B",
+    "trainingDuration": "MM minutes"
+  },
+  {
+    "id": "bf_lily",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Lily",
+    "langCode": "b",
+    "grade": "D",
+    "targetQuality": "C",
+    "trainingDuration": "MM minutes"
+  }
+]

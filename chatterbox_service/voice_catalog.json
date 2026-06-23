@@ -1,0 +1,14 @@
+[
+  {
+    "id": "reference-clone",
+    "mode": "clone",
+    "displayName": "Reference voice clone",
+    "description": "Use your local reference WAV. Chatterbox does not need a transcript."
+  },
+  {
+    "id": "builtin-default",
+    "mode": "builtin",
+    "displayName": "Built-in Chatterbox voice",
+    "description": "Official built-in model conditioning. Upstream does not label it as American, British, female, breathy, or lower-pitched."
+  }
+]

@@ -1,0 +1,79 @@
+[
+  {
+    "id": "reference-clone",
+    "mode": "clone",
+    "displayName": "Reference voice clone",
+    "voiceId": "",
+    "description": "Use your local reference WAV. PocketTTS does not need a transcript."
+  },
+  {
+    "id": "alba",
+    "mode": "preset",
+    "displayName": "Alba",
+    "voiceId": "alba",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "anna",
+    "mode": "preset",
+    "displayName": "Anna",
+    "voiceId": "anna",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "azelma",
+    "mode": "preset",
+    "displayName": "Azelma",
+    "voiceId": "azelma",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "cosette",
+    "mode": "preset",
+    "displayName": "Cosette",
+    "voiceId": "cosette",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "eponine",
+    "mode": "preset",
+    "displayName": "Eponine",
+    "voiceId": "eponine",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "eve",
+    "mode": "preset",
+    "displayName": "Eve",
+    "voiceId": "eve",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "fantine",
+    "mode": "preset",
+    "displayName": "Fantine",
+    "voiceId": "fantine",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "jane",
+    "mode": "preset",
+    "displayName": "Jane",
+    "voiceId": "jane",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "mary",
+    "mode": "preset",
+    "displayName": "Mary",
+    "voiceId": "mary",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  },
+  {
+    "id": "vera",
+    "mode": "preset",
+    "displayName": "Vera",
+    "voiceId": "vera",
+    "description": "Official English built-in PocketTTS voice. Upstream does not label region, gender, breathiness, or pitch."
+  }
+]

@@ -1,0 +1,30 @@
+FROM python:3.11-slim-bookworm
+
+ARG TORCH_CPU_INDEX_URL=https://download.pytorch.org/whl/cpu
+ARG TORCH_VERSION=2.11.0
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        ffmpeg \
+        libgomp1 \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --upgrade pip setuptools wheel
+RUN python -m pip install --no-cache-dir --index-url "${TORCH_CPU_INDEX_URL}" "torch==${TORCH_VERSION}"
+
+COPY requirements-pockettts.txt /app/requirements-pockettts.txt
+RUN python -m pip install --no-cache-dir -r /app/requirements-pockettts.txt
+
+COPY xtts_service /app/xtts_service
+COPY pockettts_service /app/pockettts_service
+
+ENTRYPOINT ["python", "-m", "pockettts_service.cli"]
+CMD ["--interactive"]

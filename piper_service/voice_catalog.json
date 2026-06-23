@@ -1,0 +1,112 @@
+[
+  {
+    "id": "us-amy",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Amy",
+    "quality": "medium",
+    "voiceName": "en_US Amy medium",
+    "modelFile": "en/en_US/amy/medium/en_US-amy-medium.onnx",
+    "configFile": "en/en_US/amy/medium/en_US-amy-medium.onnx.json"
+  },
+  {
+    "id": "us-hfc-female",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "HFC Female",
+    "quality": "medium",
+    "voiceName": "en_US HFC Female medium",
+    "modelFile": "en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx",
+    "configFile": "en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx.json"
+  },
+  {
+    "id": "us-kathleen",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Kathleen",
+    "quality": "low",
+    "voiceName": "en_US Kathleen low",
+    "modelFile": "en/en_US/kathleen/low/en_US-kathleen-low.onnx",
+    "configFile": "en/en_US/kathleen/low/en_US-kathleen-low.onnx.json"
+  },
+  {
+    "id": "us-kristin",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Kristin",
+    "quality": "medium",
+    "voiceName": "en_US Kristin medium",
+    "modelFile": "en/en_US/kristin/medium/en_US-kristin-medium.onnx",
+    "configFile": "en/en_US/kristin/medium/en_US-kristin-medium.onnx.json"
+  },
+  {
+    "id": "us-lessac",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "Lessac",
+    "quality": "high",
+    "voiceName": "en_US Lessac high",
+    "modelFile": "en/en_US/lessac/high/en_US-lessac-high.onnx",
+    "configFile": "en/en_US/lessac/high/en_US-lessac-high.onnx.json"
+  },
+  {
+    "id": "us-ljspeech",
+    "region": "american",
+    "regionLabel": "American female",
+    "displayName": "LJSpeech",
+    "quality": "high",
+    "voiceName": "en_US LJSpeech high",
+    "modelFile": "en/en_US/ljspeech/high/en_US-ljspeech-high.onnx",
+    "configFile": "en/en_US/ljspeech/high/en_US-ljspeech-high.onnx.json"
+  },
+  {
+    "id": "gb-alba",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Alba",
+    "quality": "medium",
+    "voiceName": "en_GB Alba medium",
+    "modelFile": "en/en_GB/alba/medium/en_GB-alba-medium.onnx",
+    "configFile": "en/en_GB/alba/medium/en_GB-alba-medium.onnx.json"
+  },
+  {
+    "id": "gb-aru",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Aru",
+    "quality": "medium",
+    "voiceName": "en_GB Aru medium",
+    "modelFile": "en/en_GB/aru/medium/en_GB-aru-medium.onnx",
+    "configFile": "en/en_GB/aru/medium/en_GB-aru-medium.onnx.json"
+  },
+  {
+    "id": "gb-cori",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Cori",
+    "quality": "high",
+    "voiceName": "en_GB Cori high",
+    "modelFile": "en/en_GB/cori/high/en_GB-cori-high.onnx",
+    "configFile": "en/en_GB/cori/high/en_GB-cori-high.onnx.json"
+  },
+  {
+    "id": "gb-jenny-dioco",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Jenny Dioco",
+    "quality": "medium",
+    "voiceName": "en_GB Jenny Dioco medium",
+    "modelFile": "en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx",
+    "configFile": "en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx.json"
+  },
+  {
+    "id": "gb-southern-english-female",
+    "region": "british",
+    "regionLabel": "British female",
+    "displayName": "Southern English Female",
+    "quality": "low",
+    "voiceName": "en_GB Southern English Female low",
+    "modelFile": "en/en_GB/southern_english_female/low/en_GB-southern_english_female-low.onnx",
+    "configFile": "en/en_GB/southern_english_female/low/en_GB-southern_english_female-low.onnx.json"
+  }
+]
