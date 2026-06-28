@@ -1,0 +1,8 @@
+[
+  {
+    "id": "reference-clone",
+    "mode": "clone",
+    "displayName": "Reference voice clone",
+    "description": "Use your local reference WAV and transcript. Use this for American or British female reference samples."
+  }
+]

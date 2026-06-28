@@ -23,11 +23,15 @@ DEFAULT_PAUSE_MS = 220
 DEFAULT_MAX_TOKENS = 320
 DEFAULT_FRAMES_AFTER_EOS = 24
 DEFAULT_TRUNCATE_REF = True
+POCKETTTS_CLONE_REPO = "kyutai/pocket-tts"
+DEFAULT_CLONE_WEIGHTS_PATH = "hf://kyutai/pocket-tts/tts_b6369a24.safetensors"
 PROMPT = "pockettts> "
 POCKETTTS_CLONE_AUTH_HELP = (
-    "PocketTTS voice cloning needs Kyutai's gated weights from https://huggingface.co/kyutai/pocket-tts. "
-    "Accept the terms on Hugging Face, then expose a token to Docker with HF_TOKEN or log in locally with "
-    "`huggingface-cli login` / `uvx hf auth login`. Built-in voices work without these gated clone weights."
+    f"PocketTTS voice cloning needs Kyutai's gated weights from https://huggingface.co/{POCKETTTS_CLONE_REPO}. "
+    "Accept the terms on Hugging Face, then use a read token with access to that model. "
+    f"If the token is fine-grained, add read access for {POCKETTTS_CLONE_REPO}. Expose it to Docker with HF_TOKEN "
+    "or log in locally with `huggingface-cli login` / `uvx hf auth login`. Built-in voices work without "
+    "these gated clone weights."
 )
 
 
@@ -46,6 +50,7 @@ class RuntimeConfig:
     frames_after_eos: int | None
     truncate_ref: bool
     quantize: bool
+    clone_weights_path: str
 
 
 @dataclass
@@ -77,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             frames_after_eos=args.frames_after_eos,
             truncate_ref=args.truncate_ref,
             quantize=args.quantize,
+            clone_weights_path=args.clone_weights_path,
         )
     except Exception as exc:
         print(f"PocketTTS configuration failed: {exc}", file=sys.stderr, flush=True)
@@ -142,6 +148,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         default=env_bool("POCKETTTS_TRUNCATE_REF", DEFAULT_TRUNCATE_REF),
     )
     parser.add_argument("--quantize", action="store_true", default=env_bool("POCKETTTS_QUANTIZE", False))
+    parser.add_argument(
+        "--clone-weights-path",
+        default=os.getenv("POCKETTTS_CLONE_WEIGHTS_PATH", DEFAULT_CLONE_WEIGHTS_PATH),
+        help="hf:// path for the gated PocketTTS voice-cloning checkpoint.",
+    )
     parser.add_argument("--keep-parts", action="store_true")
     return parser.parse_args(argv)
 
@@ -194,21 +205,167 @@ def env_bool(name: str, default: bool) -> bool:
 def friendly_startup_error(exc: Exception) -> str:
     message = str(exc)
     lowered = message.lower()
+    if message.startswith("PocketTTS auth preflight failed:"):
+        return message
+    if message.startswith("PocketTTS loaded without voice-cloning weights."):
+        return message
     gated_markers = (
         "we could not download the weights for the model with voice cloning",
-        "kyutai/pocket-tts",
+        POCKETTTS_CLONE_REPO,
         "voice cloning",
         "accept the terms",
     )
     if any(marker in lowered for marker in gated_markers) and "without voice cloning" in lowered:
         return POCKETTTS_CLONE_AUTH_HELP
-    if "repository not found" in lowered and "kyutai/pocket-tts" in lowered:
+    if "repository not found" in lowered and POCKETTTS_CLONE_REPO in lowered:
         return POCKETTTS_CLONE_AUTH_HELP
-    if "401" in lowered and "kyutai/pocket-tts" in lowered:
+    if "401" in lowered and POCKETTTS_CLONE_REPO in lowered:
         return POCKETTTS_CLONE_AUTH_HELP
-    if "403" in lowered and "kyutai/pocket-tts" in lowered:
+    if "403" in lowered and POCKETTTS_CLONE_REPO in lowered:
+        return POCKETTTS_CLONE_AUTH_HELP
+    if "gated repo" in lowered and POCKETTTS_CLONE_REPO in lowered:
+        return POCKETTTS_CLONE_AUTH_HELP
+    if "invalid user token" in lowered:
         return POCKETTTS_CLONE_AUTH_HELP
     return message
+
+
+def get_huggingface_token() -> str:
+    for name in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
+        token = os.getenv(name)
+        if token and token.strip():
+            return token.strip()
+    return ""
+
+
+def sanitize_error_message(exc: Exception) -> str:
+    message = f"{type(exc).__name__}: {exc}"
+    message = re.sub(r"hf_[A-Za-z0-9_\\-]+", "[redacted-hf-token]", message)
+    return re.sub(r"\s+", " ", message).strip()
+
+
+def describe_huggingface_auth_error(exc: Exception) -> str:
+    message = sanitize_error_message(exc)
+    lowered = message.lower()
+    if "invalid user token" in lowered or "401" in lowered:
+        return (
+            "the Hugging Face token is invalid, expired, copied incorrectly, or was revoked. "
+            f"Raw error: {message}"
+        )
+    if "403" in lowered or "gated repo" in lowered or "access to model" in lowered:
+        return (
+            "the token's account does not have access to the gated repo, or the token scope does not allow "
+            f"reading {POCKETTTS_CLONE_REPO}. For fine-grained tokens, add read access to that exact model. "
+            f"Raw error: {message}"
+        )
+    if "404" in lowered or "repository not found" in lowered:
+        return (
+            f"Hugging Face did not expose {POCKETTTS_CLONE_REPO} to this token. This usually means the token "
+            "belongs to a different account, gated access was not accepted on that account, or a fine-grained "
+            f"token is missing repo access. Raw error: {message}"
+        )
+    return message
+
+
+def parse_hf_uri(file_path: str) -> tuple[str, str, str | None]:
+    if not file_path.startswith("hf://"):
+        raise ValueError(f"Expected an hf:// URI, got: {file_path}")
+    spec = file_path.removeprefix("hf://")
+    parts = spec.split("/")
+    if len(parts) < 3:
+        raise ValueError(f"Invalid hf:// URI, expected hf://owner/repo/path: {file_path}")
+    repo_id = "/".join(parts[:2])
+    filename = "/".join(parts[2:])
+    revision = None
+    if "@" in filename:
+        filename, revision = filename.split("@", 1)
+    return repo_id, filename, revision
+
+
+def validate_pocket_clone_auth(token: str, clone_weights_path: str) -> None:
+    if not token:
+        raise RuntimeError(
+            "PocketTTS auth preflight failed: no HF_TOKEN reached the container. "
+            "Set HF_TOKEN in PowerShell or paste it into the hidden launcher prompt."
+        )
+
+    from huggingface_hub import hf_hub_download
+
+    repo_id, filename, revision = parse_hf_uri(clone_weights_path)
+
+    try:
+        hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            revision=revision,
+            token=token,
+            dry_run=True,
+            etag_timeout=60,
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            f"PocketTTS auth preflight failed: {describe_huggingface_auth_error(exc)}"
+        ) from exc
+
+
+def install_huggingface_token_download_patch(token: str) -> list[str]:
+    if not token:
+        return []
+
+    from huggingface_hub import hf_hub_download
+    import pocket_tts.models.tts_model as tts_model_module
+    import pocket_tts.utils.utils as pocket_utils
+
+    gated_download_errors: list[str] = []
+    original_download = pocket_utils.download_if_necessary
+
+    def download_with_explicit_token(file_path: str) -> Path:
+        file_path_text = str(file_path)
+        if not file_path_text.startswith("hf://"):
+            return original_download(file_path)
+
+        repo_id, filename, revision = parse_hf_uri(file_path_text)
+        try:
+            return Path(
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename=filename,
+                    revision=revision,
+                    token=token,
+                    etag_timeout=60,
+                )
+            )
+        except Exception as exc:
+            if repo_id == POCKETTTS_CLONE_REPO:
+                gated_download_errors.append(describe_huggingface_auth_error(exc))
+            raise
+
+    pocket_utils.download_if_necessary = download_with_explicit_token
+    tts_model_module.download_if_necessary = download_with_explicit_token
+    return gated_download_errors
+
+
+def create_clone_config(language: str, clone_weights_path: str) -> Path:
+    from pocket_tts.utils.config import CONFIGS_DIR
+
+    base_config = CONFIGS_DIR / f"{language}.yaml"
+    if not base_config.exists():
+        raise FileNotFoundError(f"PocketTTS language config was not found: {base_config}")
+
+    config_text = base_config.read_text(encoding="utf-8")
+    if not re.search(r"^weights_path:\s*", config_text, flags=re.MULTILINE):
+        raise ValueError(f"PocketTTS language config has no weights_path entry: {base_config}")
+    config_text = re.sub(
+        r"^weights_path:\s*.*$",
+        f"weights_path: {clone_weights_path}",
+        config_text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    config_path = Path("/tmp/pockettts-clone-config.yaml")
+    config_path.write_text(config_text, encoding="utf-8")
+    return config_path
 
 
 def load_runtime(config: RuntimeConfig) -> PocketRuntime:
@@ -224,10 +381,31 @@ def load_runtime(config: RuntimeConfig) -> PocketRuntime:
     )
     print("PocketTTS is CPU-first upstream; this container does not reserve the RTX 5070.", flush=True)
 
+    gated_download_errors: list[str] = []
+    if config.voice_mode == "clone":
+        token = get_huggingface_token()
+        validate_pocket_clone_auth(token, config.clone_weights_path)
+        gated_download_errors = install_huggingface_token_download_patch(token)
+        print("PocketTTS clone auth: token can access the gated clone checkpoint.", flush=True)
+        print("PocketTTS clone auth: using Hugging Face token for gated weight downloads.", flush=True)
+        print(f"PocketTTS clone weights: {config.clone_weights_path}", flush=True)
+
     print(f"Loading PocketTTS language model: {config.language}...", flush=True)
     loaded_at = time.perf_counter()
-    model = TTSModel.load_model(language=config.language, quantize=config.quantize)
+    if config.voice_mode == "clone":
+        model = TTSModel.load_model(
+            config=create_clone_config(config.language, config.clone_weights_path),
+            quantize=config.quantize,
+        )
+    else:
+        model = TTSModel.load_model(language=config.language, quantize=config.quantize)
     print(f"Model loaded in {time.perf_counter() - loaded_at:.1f}s.", flush=True)
+    if config.voice_mode == "clone" and not getattr(model, "has_voice_cloning", False):
+        detail = gated_download_errors[-1] if gated_download_errors else "PocketTTS did not expose the underlying download error."
+        raise RuntimeError(
+            "PocketTTS loaded without voice-cloning weights. "
+            f"The package fell back to the non-cloning checkpoint. Last gated download error: {detail}"
+        )
 
     if config.voice_mode == "clone":
         if config.ref_audio is None:

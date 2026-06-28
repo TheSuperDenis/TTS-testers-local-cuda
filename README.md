@@ -21,6 +21,7 @@ Included model containers:
 - `sopro`: SoproTTS 135M English voice clone. No official female preset catalog is bundled.
 - `pockettts`: Kyutai PocketTTS 100M voice clone, plus selected official English built-in voices. PocketTTS is CPU-first upstream.
 - `moss`: OpenMOSS MOSS-TTS-Nano 100M ONNX voice clone, plus the official English Female built-in voices Ava and Bella.
+- `f5tts`: SWivid F5-TTS reference voice clone. No official American/British female preset catalog is bundled.
 
 The repo does not include voice samples, transcripts, model weights, generated outputs, API keys, or Docker image exports.
 
@@ -77,6 +78,7 @@ No full machine details are published here.
 | MioTTS 0.1B | 84 chars | ~10.9s load + codec + voice embedding | 5.28s | 12.54s | 2.37x | Token cap reduced drawn-out vowel loops. |
 | Qwen3-TTS 0.6B Base | 64 chars | ~35.6s load + voice prompt prep | 4.88s | 19.61s | 4.02x | Runs on SDPA; `flash_attention_3` failed on the RTX 5070 target. |
 | Chatterbox 500M clone | 50 chars | ~24.4s warm load + 17.4s voice prep | 4.5s | 20.7s | 4.58x | Real voice-clone path works, but this first test was not near real time. |
+| F5-TTS v1 Base clone | 18 chars | ~88.3s first load after download | 1.3s | 6.9s | 5.22x | CUDA path worked; first test used low NFE steps for a quick smoke test. |
 
 ## First Run
 
@@ -89,7 +91,7 @@ reference.wav
 reference.txt
 ```
 
-`reference.wav` should be a clean sample of the target voice. `reference.txt` should contain the exact words spoken in that WAV. Chatterbox, SoproTTS, PocketTTS, and MOSS-TTS-Nano use the WAV but do not need the transcript. Piper, Kokoro, and KittenTTS do not use these files because they use configured preset voices instead of zero-shot cloning.
+`reference.wav` should be a clean sample of the target voice. `reference.txt` should contain the exact words spoken in that WAV. F5-TTS uses both files and is a good fit for American or British female reference samples. Chatterbox, SoproTTS, PocketTTS, and MOSS-TTS-Nano use the WAV but do not need the transcript. Piper, Kokoro, and KittenTTS do not use these files because they use configured preset voices instead of zero-shot cloning.
 
 Private voice-clone inputs are runtime inputs only. Do not put proprietary voice samples, transcripts, API keys, or per-user clone settings in Python files or commits. If another app stores the selected clone settings in a database, pass those resolved local file paths into this launcher at runtime with `-Speaker` and `-ReferenceText`, or through the model-specific environment variables.
 
@@ -117,6 +119,7 @@ chatterbox>
 soprotts>
 pockettts>
 mossttsnano>
+f5tts>
 ```
 
 Outputs are written locally and ignored by git:
@@ -133,6 +136,7 @@ output/chatterbox/
 output/sopro/
 output/pockettts/
 output/moss/
+output/f5tts/
 ```
 
 Model downloads are cached under `.cache` and are also ignored by git.
@@ -275,7 +279,9 @@ PocketTTS uses Kyutai's 100M-parameter PocketTTS model. The picker offers voice 
 
 PocketTTS is intentionally CPU-first. Kyutai's README says the model runs on CPU, does not require a GPU PyTorch build, and did not show a GPU speedup in their tests. This Docker profile therefore does not reserve the RTX 5070 even though it uses the same PowerShell frontend and output workflow as the CUDA profiles.
 
-Voice cloning requires access to Kyutai's gated PocketTTS voice-cloning weights. Accept the terms on the Hugging Face model page first. After that, either log in locally or set `HF_TOKEN` in the PowerShell session before launching. The launcher will read the token from the current environment or the normal local Hugging Face login file and pass it into Docker for that run. Do not write the token into repo files.
+Voice cloning requires access to Kyutai's gated PocketTTS voice-cloning weights. Accept the terms on the Hugging Face model page first. After that, either log in locally, set `HF_TOKEN` in the PowerShell session before launching, or paste a token into the launcher's hidden prompt when clone mode asks for it. Use a read token. If the token is fine-grained, make sure it has read access to the `kyutai/pocket-tts` model repo specifically. The launcher will read the token from the current environment, the normal local Hugging Face login file, or the one-time prompt and pass it into Docker for that launcher session. Do not write the token into repo files.
+
+The launcher overrides PocketTTS clone mode to use the current gated checkpoint path `hf://kyutai/pocket-tts/tts_b6369a24.safetensors`. Override `POCKETTTS_CLONE_WEIGHTS_PATH` only if Kyutai changes the file layout again.
 
 ```powershell
 uvx hf auth login
@@ -347,6 +353,30 @@ MOSS_REALTIME_STREAMING_DECODE=1
 ```
 
 MOSS-TTS-Nano performs its own token-budget chunking during synthesis. The wrapper preloads the selected reference or built-in voice before showing `READY`, then writes WAV and JSON files under `output/moss`.
+
+F5-TTS uses the official `f5-tts` package and the `F5TTS_v1_Base` model by default. It supports reference voice cloning from a local WAV plus the exact transcript. The upstream package does not publish a named American/British female preset catalog, so this launcher exposes reference clone first and only for F5-TTS.
+
+```powershell
+.\run.ps1 -Model f5tts -F5Voice reference-clone
+```
+
+| Voice option | Mode | Notes |
+| --- | --- | --- |
+| `reference-clone` | Voice clone | Uses your local reference WAV and transcript. Use this for American or British female reference samples. |
+
+F5-TTS defaults:
+
+```text
+F5TTS_MODEL_NAME=F5TTS_v1_Base
+F5TTS_CHUNK_CHARS=260
+F5TTS_PAUSE_MS=180
+F5TTS_NFE_STEP=32
+F5TTS_CFG_STRENGTH=2.0
+F5TTS_SPEED=1.0
+F5TTS_SWAY_SAMPLING_COEF=-1.0
+```
+
+The wrapper preserves pasted dialogue lines as separate turns, splits long sentences around clauses, and writes WAV/JSON files under `output/f5tts`.
 
 Piper uses the public `rhasspy/piper-voices` ONNX voice set. The PowerShell launcher includes a small curated picker and chooses the highest available quality for each listed voice.
 
@@ -473,6 +503,8 @@ KittenTTS is wired for ONNX Runtime CUDA with the same CUDA 13 path used by Pipe
 .\run.ps1 -Model pockettts -PocketVoice alba
 .\run.ps1 -Model moss
 .\run.ps1 -Model moss -MossVoice ava
+.\run.ps1 -Model f5tts
+.\run.ps1 -Model f5tts -F5Voice reference-clone
 .\run.ps1 -Speaker "reference.wav" -ReferenceText "reference.txt" -Language en
 .\run.ps1 -NoBuild
 .\run.ps1 -Model pockettts -Rebuild

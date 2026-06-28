@@ -420,6 +420,7 @@ services:
       HF_TOKEN: "${HF_TOKEN:-}"
       HUGGING_FACE_HUB_TOKEN: "${HF_TOKEN:-}"
       POCKETTTS_CHUNK_CHARS: "${POCKETTTS_CHUNK_CHARS:-220}"
+      POCKETTTS_CLONE_WEIGHTS_PATH: "${POCKETTTS_CLONE_WEIGHTS_PATH:-hf://kyutai/pocket-tts/tts_b6369a24.safetensors}"
       POCKETTTS_FRAMES_AFTER_EOS: "${POCKETTTS_FRAMES_AFTER_EOS:-24}"
       POCKETTTS_LANGUAGE: "${POCKETTTS_LANGUAGE:-english}"
       POCKETTTS_MAX_TOKENS: "${POCKETTTS_MAX_TOKENS:-320}"
@@ -498,4 +499,56 @@ services:
       - ./prompt.txt:/workspace/prompt.txt:ro
       - ./.cache/huggingface:/models/huggingface
       - ./.cache/moss:/opt/moss-tts-nano/models
+      - ./.cache/torch:/models/torch
+
+  f5tts:
+    profiles:
+      - f5tts
+    build:
+      context: .
+      dockerfile: Dockerfile.f5tts
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        TORCHAUDIO_VERSION: "${TORCHAUDIO_VERSION:-2.11.0}"
+    image: f5tts-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      F5TTS_CFG_STRENGTH: "${F5TTS_CFG_STRENGTH:-2.0}"
+      F5TTS_CHUNK_CHARS: "${F5TTS_CHUNK_CHARS:-260}"
+      F5TTS_CROSS_FADE_DURATION: "${F5TTS_CROSS_FADE_DURATION:-0.15}"
+      F5TTS_HF_CACHE_DIR: /models/f5tts
+      F5TTS_MODEL_NAME: "${F5TTS_MODEL_NAME:-F5TTS_v1_Base}"
+      F5TTS_NFE_STEP: "${F5TTS_NFE_STEP:-32}"
+      F5TTS_OUTPUT_DIR: /app/output/f5tts
+      F5TTS_PAUSE_MS: "${F5TTS_PAUSE_MS:-180}"
+      F5TTS_REF_AUDIO: "${F5TTS_REF_AUDIO:-/workspace/reference.wav}"
+      F5TTS_REF_TEXT_FILE: "${F5TTS_REF_TEXT_FILE:-/workspace/reference.txt}"
+      F5TTS_REMOVE_SILENCE: "${F5TTS_REMOVE_SILENCE:-0}"
+      F5TTS_SPEED: "${F5TTS_SPEED:-1.0}"
+      F5TTS_SWAY_SAMPLING_COEF: "${F5TTS_SWAY_SAMPLING_COEF:--1.0}"
+      F5TTS_TARGET_RMS: "${F5TTS_TARGET_RMS:-0.1}"
+      F5TTS_USE_CUDA: "${F5TTS_USE_CUDA:-1}"
+      F5TTS_VOICE_MODE: "${F5TTS_VOICE_MODE:-clone}"
+      F5TTS_VOICE_NAME: "${F5TTS_VOICE_NAME:-Reference voice clone}"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      TORCH_HOME: /models/torch
+      TQDM_DISABLE: "1"
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./f5tts_service:/app/f5tts_service:ro
+      - ./:/workspace:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/f5tts:/models/f5tts
+      - ./.cache/huggingface:/models/huggingface
       - ./.cache/torch:/models/torch

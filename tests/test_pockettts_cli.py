@@ -8,6 +8,8 @@ from pockettts_service.cli import (
     friendly_startup_error,
     normalize_voice_mode,
     output_name,
+    parse_hf_uri,
+    sanitize_error_message,
     split_pocket_text,
 )
 
@@ -43,6 +45,27 @@ class PocketTtsCliTests(unittest.TestCase):
 
         self.assertIn("https://huggingface.co/kyutai/pocket-tts", error)
         self.assertIn("HF_TOKEN", error)
+
+    def test_preflight_error_keeps_diagnostic_detail(self):
+        message = "PocketTTS auth preflight failed: the token is invalid. Raw error: 401"
+
+        self.assertEqual(friendly_startup_error(RuntimeError(message)), message)
+
+    def test_error_sanitizer_redacts_huggingface_tokens(self):
+        error = sanitize_error_message(RuntimeError("bad token hf_shortFakeToken"))
+
+        self.assertNotIn("hf_shortFakeToken", error)
+        self.assertIn("[redacted-hf-token]", error)
+
+    def test_hf_uri_parser_handles_optional_revision(self):
+        self.assertEqual(
+            parse_hf_uri("hf://kyutai/pocket-tts/tts_b6369a24.safetensors@abc123"),
+            ("kyutai/pocket-tts", "tts_b6369a24.safetensors", "abc123"),
+        )
+        self.assertEqual(
+            parse_hf_uri("hf://kyutai/pocket-tts/tts_b6369a24.safetensors"),
+            ("kyutai/pocket-tts", "tts_b6369a24.safetensors", None),
+        )
 
     def test_dialogue_lines_stay_separate(self):
         text = (

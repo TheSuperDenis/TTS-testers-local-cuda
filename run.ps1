@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("menu", "xtts", "qwen", "miotts", "luxtts", "piper", "kokoro", "kitten", "chatterbox", "sopro", "pockettts", "moss")]
+    [ValidateSet("menu", "xtts", "qwen", "miotts", "luxtts", "piper", "kokoro", "kitten", "chatterbox", "sopro", "pockettts", "moss", "f5tts")]
     [string]$Model = "menu",
     [string]$Speaker = "",
     [string]$ReferenceText = "",
@@ -17,6 +17,7 @@ param(
     [string]$SoproVoice = "",
     [string]$PocketVoice = "",
     [string]$MossVoice = "",
+    [string]$F5Voice = "",
     [string]$Gpu = "",
     [switch]$Cuda128,
     [switch]$NoBuild,
@@ -171,6 +172,7 @@ function Initialize-Environment {
         (Join-Path $Root ".cache\sopro"), `
         (Join-Path $Root ".cache\pockettts"), `
         (Join-Path $Root ".cache\moss"), `
+        (Join-Path $Root ".cache\f5tts"), `
         (Join-Path $Root ".cache\miotts"), `
         (Join-Path $Root ".cache\piper"), `
         (Join-Path $Root ".cache\torch") | Out-Null
@@ -193,6 +195,7 @@ function Initialize-Environment {
     $env:CHATTERBOX_GPU = $script:Gpu
     $env:SOPRO_GPU = $script:Gpu
     $env:MOSS_GPU = $script:Gpu
+    $env:F5TTS_GPU = $script:Gpu
     $env:XTTS_LANGUAGE = $Language
     $env:QWEN_LANGUAGE = $QwenLanguage
     $env:XTTS_SPEAKER_WAV = $speakerPath
@@ -207,6 +210,8 @@ function Initialize-Environment {
     $env:SOPRO_REF_AUDIO = $speakerPath
     $env:POCKETTTS_REF_AUDIO = $speakerPath
     $env:MOSS_REF_AUDIO = $speakerPath
+    $env:F5TTS_REF_AUDIO = $speakerPath
+    $env:F5TTS_REF_TEXT_FILE = $referencePath
 
     if ($Cuda128) {
         $env:PYTORCH_INDEX_URL = "https://download.pytorch.org/whl/cu128"
@@ -239,6 +244,7 @@ function Get-ServiceImageName([string]$ServiceName) {
         "sopro" { return "sopro-local:cu13" }
         "pockettts" { return "pockettts-local:cpu" }
         "moss" { return "moss-tts-nano-local:cu13" }
+        "f5tts" { return "f5tts-local:cu13" }
         default { throw "Unknown service '$ServiceName'." }
     }
 }
@@ -982,6 +988,30 @@ function Get-HuggingFaceTokenForDocker {
     return ""
 }
 
+function Read-HiddenToken([string]$Prompt) {
+    try {
+        $secure = Read-Host $Prompt -AsSecureString
+    } catch {
+        return ""
+    }
+    if ($null -eq $secure -or $secure.Length -eq 0) {
+        return ""
+    }
+
+    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    try {
+        $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        if ($plain) {
+            return $plain.Trim()
+        }
+    } finally {
+        if ($bstr -ne [IntPtr]::Zero) {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+    return ""
+}
+
 function Test-PocketCloneWeightsCache {
     $cacheCandidates = @(
         (Join-Path $Root ".cache\huggingface\models--kyutai--pocket-tts"),
@@ -1016,7 +1046,17 @@ function Ensure-PocketCloneAuth {
     Write-Host "  huggingface-cli login"
     Write-Host "  uvx hf auth login"
     Write-Host "  `$env:HF_TOKEN = `"your-local-hugging-face-token`""
-    Write-Host "Do not put the token in repo files. The launcher will pass it to Docker for this run only."
+    Write-Host ""
+    Write-Host "Or paste a Hugging Face token now. It will be hidden while typing and will not be written to repo files."
+    $typedToken = Read-HiddenToken "HF token for this launcher session, or Enter to return to menu"
+    if ($typedToken) {
+        $env:HF_TOKEN = $typedToken
+        $env:HUGGING_FACE_HUB_TOKEN = $typedToken
+        Write-Host "PocketTTS clone auth: token accepted for this launcher session and passed to Docker."
+        return $true
+    }
+
+    Write-Host "No token entered. Returning to the launcher menu."
     return $false
 }
 
@@ -1484,6 +1524,7 @@ function Show-Menu {
     Write-Host "9. SoproTTS 135M - reference voice clone"
     Write-Host "10. PocketTTS 100M - reference clone + English built-in voices"
     Write-Host "11. MOSS-TTS-Nano 100M - reference clone + English female built-in voices"
+    Write-Host "12. F5-TTS - reference voice clone"
     Write-Host "Q. Quit"
 }
 
@@ -1533,9 +1574,13 @@ function Read-ModelChoice {
             "moss-tts" { return "moss" }
             "mossnano" { return "moss" }
             "moss-tts-nano" { return "moss" }
+            "12" { return "f5tts" }
+            "f5" { return "f5tts" }
+            "f5tts" { return "f5tts" }
+            "f5-tts" { return "f5tts" }
             "q" { return "" }
             "quit" { return "" }
-            default { Write-Host "Choose 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, or Q." }
+            default { Write-Host "Choose 1 through 12, or Q." }
         }
     }
 }
@@ -1737,6 +1782,23 @@ function Invoke-SelectedModel([string]$SelectedModel) {
             }
             Write-Host "Starting MOSS-TTS-Nano 100M with $env:MOSS_VOICE_NAME. Wait for mossttsnano> before typing."
             Invoke-TtsContainer "moss"
+            return
+        }
+        "f5tts" {
+            $selectedVoice = Read-ReferenceOnlyVoiceChoice "F5-TTS" $F5Voice
+            if (-not $selectedVoice) {
+                $script:SelectedModelExitCode = 0
+                return
+            }
+            if (-not $env:F5TTS_REF_AUDIO -or -not $env:F5TTS_REF_TEXT_FILE) {
+                Write-Error "F5-TTS voice cloning requires both a reference WAV and a reference transcript."
+                $script:SelectedModelExitCode = 1
+                return
+            }
+            Write-Host ""
+            Write-ReferenceInputs
+            Write-Host "Starting F5-TTS with reference voice clone. Wait for f5tts> before typing."
+            Invoke-TtsContainer "f5tts"
             return
         }
         default {
