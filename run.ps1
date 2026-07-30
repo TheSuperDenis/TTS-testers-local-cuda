@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("menu", "xtts", "qwen", "miotts", "luxtts", "piper", "kokoro", "kitten", "chatterbox", "sopro", "pockettts", "moss", "f5tts")]
+    [ValidateSet("menu", "xtts", "qwen", "miotts", "luxtts", "piper", "kokoro", "kitten", "chatterbox", "sopro", "pockettts", "moss", "f5tts", "supertonic")]
     [string]$Model = "menu",
     [string]$Speaker = "",
     [string]$ReferenceText = "",
@@ -12,7 +12,10 @@ param(
     [string]$LuxVoice = "",
     [string]$PiperVoice = "",
     [string]$KokoroVoice = "",
+    [string]$KittenSize = "",
     [string]$KittenVoice = "",
+    [string]$SupertonicVoice = "",
+    [string]$SupertonicLanguage = "en",
     [string]$ChatterboxVoice = "",
     [string]$SoproVoice = "",
     [string]$PocketVoice = "",
@@ -168,6 +171,7 @@ function Initialize-Environment {
         (Join-Path $Root ".cache\huggingface"), `
         (Join-Path $Root ".cache\kokoro"), `
         (Join-Path $Root ".cache\kitten"), `
+        (Join-Path $Root ".cache\supertonic"), `
         (Join-Path $Root ".cache\chatterbox"), `
         (Join-Path $Root ".cache\sopro"), `
         (Join-Path $Root ".cache\pockettts"), `
@@ -192,12 +196,14 @@ function Initialize-Environment {
     $env:PIPER_GPU = $script:Gpu
     $env:KOKORO_GPU = $script:Gpu
     $env:KITTEN_GPU = $script:Gpu
+    $env:SUPERTONIC_GPU = $script:Gpu
     $env:CHATTERBOX_GPU = $script:Gpu
     $env:SOPRO_GPU = $script:Gpu
     $env:MOSS_GPU = $script:Gpu
     $env:F5TTS_GPU = $script:Gpu
     $env:XTTS_LANGUAGE = $Language
     $env:QWEN_LANGUAGE = $QwenLanguage
+    $env:SUPERTONIC_LANGUAGE = $SupertonicLanguage
     $env:XTTS_SPEAKER_WAV = $speakerPath
     $env:XTTS_SPEAKER_TEXT = $referencePath
     $env:QWEN_REF_AUDIO = $speakerPath
@@ -240,6 +246,7 @@ function Get-ServiceImageName([string]$ServiceName) {
         "piper" { return "piper-local:cu13" }
         "kokoro" { return "kokoro-local:cu13" }
         "kitten" { return "kitten-local:cu13" }
+        "supertonic" { return "supertonic3-local:cu13" }
         "chatterbox" { return "chatterbox-local:cu13" }
         "sopro" { return "sopro-local:cu13" }
         "pockettts" { return "pockettts-local:cpu" }
@@ -294,6 +301,7 @@ function Show-PiperVoiceGroups {
     Write-Host "Piper voice picker"
     Write-Host "1. American female voices"
     Write-Host "2. British female voices"
+    Write-Host "3. All high-quality voices"
     Write-Host "B. Back"
     Write-Host "Q. Quit"
 }
@@ -342,6 +350,10 @@ function Read-PiperVoiceChoice([string]$PreferredVoice) {
             "british" { $region = "british" }
             "uk" { $region = "british" }
             "gb" { $region = "british" }
+            "3" { $region = "all-high" }
+            "high" { $region = "all-high" }
+            "all-high" { $region = "all-high" }
+            "all high" { $region = "all-high" }
             "b" { return $null }
             "back" { return $null }
             "q" { return $null }
@@ -351,13 +363,22 @@ function Read-PiperVoiceChoice([string]$PreferredVoice) {
                 if ($directVoice) {
                     return $directVoice
                 }
-                Write-Host "Choose 1, 2, B, or Q."
+                Write-Host "Choose 1, 2, 3, B, or Q."
                 continue
             }
         }
 
-        $voices = @($catalog | Where-Object { $_.region -eq $region })
-        $groupLabel = if ($region -eq "american") { "American female" } else { "British female" }
+        $voices = if ($region -eq "all-high") {
+            @($catalog | Where-Object { $_.quality -eq "high" })
+        } else {
+            @($catalog | Where-Object { $_.region -eq $region })
+        }
+        $groupLabel = switch ($region) {
+            "american" { "American female" }
+            "british" { "British female" }
+            "all-high" { "All high-quality" }
+            default { "Piper" }
+        }
         while ($true) {
             Show-PiperVoices $voices $groupLabel
             try {
@@ -562,6 +583,99 @@ function Get-KittenVoiceCatalog {
     return @(Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json)
 }
 
+function Get-KittenModelCatalog {
+    $catalogPath = Join-Path $Root "kitten_service\model_catalog.json"
+    if (-not (Test-Path -LiteralPath $catalogPath)) {
+        throw "KittenTTS model catalog was not found at '$catalogPath'."
+    }
+
+    return @(Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json)
+}
+
+function Find-KittenModel([string]$ModelValue, [object[]]$Catalog = @()) {
+    if (-not $ModelValue) {
+        return $null
+    }
+    if ($Catalog.Count -eq 0) {
+        $Catalog = Get-KittenModelCatalog
+    }
+
+    $target = ConvertTo-PiperVoiceKey $ModelValue
+    foreach ($modelOption in $Catalog) {
+        $aliases = @(
+            [string]$modelOption.id,
+            [string]$modelOption.displayName,
+            [string]$modelOption.modelId,
+            [string]$modelOption.parameters
+        )
+        foreach ($alias in $aliases) {
+            if ((ConvertTo-PiperVoiceKey $alias) -eq $target) {
+                return $modelOption
+            }
+        }
+    }
+
+    return $null
+}
+
+function Show-KittenModels([object[]]$Models) {
+    Write-Host ""
+    Write-Host "KittenTTS model sizes"
+    for ($index = 0; $index -lt $Models.Count; $index++) {
+        $modelOption = $Models[$index]
+        $number = $index + 1
+        Write-Host "$number. $($modelOption.displayName) - approximately $($modelOption.downloadSizeMb) MB download"
+    }
+    Write-Host "Q. Quit"
+}
+
+function Read-KittenModelChoice([string]$PreferredModel) {
+    $catalog = Get-KittenModelCatalog
+    if ($PreferredModel) {
+        $modelOption = Find-KittenModel $PreferredModel $catalog
+        if (-not $modelOption) {
+            throw "Unknown KittenTTS size '$PreferredModel'. Use nano, micro, or mini."
+        }
+        return $modelOption
+    }
+
+    while ($true) {
+        Show-KittenModels $catalog
+        try {
+            $rawModel = Read-Host "Choose a KittenTTS model size"
+        } catch {
+            return $null
+        }
+        if ($null -eq $rawModel) {
+            return $null
+        }
+
+        $modelChoice = $rawModel.Trim()
+        $modelKey = $modelChoice.ToLowerInvariant()
+        if ($modelKey -in @("q", "quit")) {
+            return $null
+        }
+        if ($modelChoice -match "^\d+$") {
+            $modelIndex = [int]$modelChoice
+            if ($modelIndex -ge 1 -and $modelIndex -le $catalog.Count) {
+                return $catalog[$modelIndex - 1]
+            }
+        }
+
+        $modelOption = Find-KittenModel $modelChoice $catalog
+        if ($modelOption) {
+            return $modelOption
+        }
+        Write-Host "Choose one of the listed model numbers or Q."
+    }
+}
+
+function Set-KittenModelEnvironment([object]$ModelOption) {
+    $env:KITTEN_MODEL_ID = [string]$ModelOption.modelId
+    $env:KITTEN_MODEL_NAME = [string]$ModelOption.displayName
+    Write-Host "KittenTTS model: $($ModelOption.displayName) ($($ModelOption.modelId))"
+}
+
 function Find-KittenVoice([string]$VoiceValue, [object[]]$Catalog = @()) {
     if (-not $VoiceValue) {
         return $null
@@ -643,6 +757,98 @@ function Set-KittenVoiceEnvironment([object]$Voice) {
     $env:KITTEN_VOICE_ID = [string]$Voice.internalId
     $env:KITTEN_VOICE_NAME = [string]$Voice.displayName
     Write-Host "KittenTTS voice: $($Voice.displayName) ($($Voice.internalId))"
+}
+
+function Get-SupertonicVoiceCatalog {
+    $catalogPath = Join-Path $Root "supertonic_service\voice_catalog.json"
+    if (-not (Test-Path -LiteralPath $catalogPath)) {
+        throw "Supertonic 3 voice catalog was not found at '$catalogPath'."
+    }
+
+    return @(Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json)
+}
+
+function Find-SupertonicVoice([string]$VoiceValue, [object[]]$Catalog = @()) {
+    if (-not $VoiceValue) {
+        return $null
+    }
+    if ($Catalog.Count -eq 0) {
+        $Catalog = Get-SupertonicVoiceCatalog
+    }
+
+    $target = ConvertTo-PiperVoiceKey $VoiceValue
+    foreach ($voice in $Catalog) {
+        $aliases = @(
+            [string]$voice.id,
+            [string]$voice.displayName,
+            [string]$voice.internalId
+        )
+        foreach ($alias in $aliases) {
+            if ((ConvertTo-PiperVoiceKey $alias) -eq $target) {
+                return $voice
+            }
+        }
+    }
+
+    return $null
+}
+
+function Show-SupertonicVoices([object[]]$Voices) {
+    Write-Host ""
+    Write-Host "Supertonic 3 female preset voices"
+    for ($index = 0; $index -lt $Voices.Count; $index++) {
+        $voice = $Voices[$index]
+        $number = $index + 1
+        Write-Host "$number. $($voice.displayName) - $($voice.internalId)"
+    }
+    Write-Host "Q. Quit"
+}
+
+function Read-SupertonicVoiceChoice([string]$PreferredVoice) {
+    $catalog = Get-SupertonicVoiceCatalog
+    if ($PreferredVoice) {
+        $voice = Find-SupertonicVoice $PreferredVoice $catalog
+        if (-not $voice) {
+            throw "Unknown Supertonic 3 voice '$PreferredVoice'. Use f1, f2, f3, f4, or f5."
+        }
+        return $voice
+    }
+
+    while ($true) {
+        Show-SupertonicVoices $catalog
+        try {
+            $rawVoice = Read-Host "Choose a Supertonic 3 voice"
+        } catch {
+            return $null
+        }
+        if ($null -eq $rawVoice) {
+            return $null
+        }
+
+        $voiceChoice = $rawVoice.Trim()
+        $voiceKey = $voiceChoice.ToLowerInvariant()
+        if ($voiceKey -in @("q", "quit")) {
+            return $null
+        }
+        if ($voiceChoice -match "^\d+$") {
+            $voiceIndex = [int]$voiceChoice
+            if ($voiceIndex -ge 1 -and $voiceIndex -le $catalog.Count) {
+                return $catalog[$voiceIndex - 1]
+            }
+        }
+
+        $voice = Find-SupertonicVoice $voiceChoice $catalog
+        if ($voice) {
+            return $voice
+        }
+        Write-Host "Choose one of the listed voice numbers or Q."
+    }
+}
+
+function Set-SupertonicVoiceEnvironment([object]$Voice) {
+    $env:SUPERTONIC_VOICE_ID = [string]$Voice.internalId
+    $env:SUPERTONIC_VOICE_NAME = [string]$Voice.displayName
+    Write-Host "Supertonic 3 voice: $($Voice.displayName) ($($Voice.internalId))"
 }
 
 function Get-ChatterboxVoiceCatalog {
@@ -1519,12 +1725,13 @@ function Show-Menu {
     Write-Host "4. LuxTTS 100M - reference voice clone"
     Write-Host "5. Piper TTS - preset voice picker (no cloning)"
     Write-Host "6. Kokoro-82M - preset voice picker (no cloning)"
-    Write-Host "7. KittenTTS 80M - female preset voice picker (no cloning)"
+    Write-Host "7. KittenTTS 15M/40M/80M - female preset voice picker (no cloning)"
     Write-Host "8. Chatterbox 500M - reference clone + built-in fallback"
     Write-Host "9. SoproTTS 135M - reference voice clone"
     Write-Host "10. PocketTTS 100M - reference clone + English built-in voices"
     Write-Host "11. MOSS-TTS-Nano 100M - reference clone + English female built-in voices"
     Write-Host "12. F5-TTS - reference voice clone"
+    Write-Host "13. Supertonic 3 99M - female preset voice picker (no cloning)"
     Write-Host "Q. Quit"
 }
 
@@ -1578,9 +1785,13 @@ function Read-ModelChoice {
             "f5" { return "f5tts" }
             "f5tts" { return "f5tts" }
             "f5-tts" { return "f5tts" }
+            "13" { return "supertonic" }
+            "supertonic" { return "supertonic" }
+            "supertonic3" { return "supertonic" }
+            "supertonic-3" { return "supertonic" }
             "q" { return "" }
             "quit" { return "" }
-            default { Write-Host "Choose 1 through 12, or Q." }
+            default { Write-Host "Choose 1 through 13, or Q." }
         }
     }
 }
@@ -1681,15 +1892,34 @@ function Invoke-SelectedModel([string]$SelectedModel) {
             return
         }
         "kitten" {
+            $selectedKittenModel = Read-KittenModelChoice $KittenSize
+            if (-not $selectedKittenModel) {
+                $script:SelectedModelExitCode = 0
+                return
+            }
             $selectedVoice = Read-KittenVoiceChoice $KittenVoice
             if (-not $selectedVoice) {
                 $script:SelectedModelExitCode = 0
                 return
             }
+            Set-KittenModelEnvironment $selectedKittenModel
             Set-KittenVoiceEnvironment $selectedVoice
             Write-Host ""
-            Write-Host "Starting KittenTTS with $env:KITTEN_VOICE_NAME. Wait for kittentts> before typing."
+            Write-Host "Starting KittenTTS $env:KITTEN_MODEL_NAME with $env:KITTEN_VOICE_NAME. Wait for kittentts> before typing."
             Invoke-TtsContainer "kitten"
+            return
+        }
+        "supertonic" {
+            $selectedVoice = Read-SupertonicVoiceChoice $SupertonicVoice
+            if (-not $selectedVoice) {
+                $script:SelectedModelExitCode = 0
+                return
+            }
+            Set-SupertonicVoiceEnvironment $selectedVoice
+            Write-Host ""
+            Write-Host "Supertonic 3 preset voice does not use the local reference WAV or transcript."
+            Write-Host "Starting Supertonic 3 with $env:SUPERTONIC_VOICE_NAME. Wait for supertonic3> before typing."
+            Invoke-TtsContainer "supertonic"
             return
         }
         "chatterbox" {

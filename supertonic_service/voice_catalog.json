@@ -1,0 +1,37 @@
+[
+  {
+    "id": "f1",
+    "displayName": "Female F1",
+    "internalId": "F1",
+    "gender": "Female",
+    "order": 1
+  },
+  {
+    "id": "f2",
+    "displayName": "Female F2",
+    "internalId": "F2",
+    "gender": "Female",
+    "order": 2
+  },
+  {
+    "id": "f3",
+    "displayName": "Female F3",
+    "internalId": "F3",
+    "gender": "Female",
+    "order": 3
+  },
+  {
+    "id": "f4",
+    "displayName": "Female F4",
+    "internalId": "F4",
+    "gender": "Female",
+    "order": 4
+  },
+  {
+    "id": "f5",
+    "displayName": "Female F5",
+    "internalId": "F5",
+    "gender": "Female",
+    "order": 5
+  }
+]

@@ -284,7 +284,8 @@ services:
       KITTEN_CHUNK_CHARS: "${KITTEN_CHUNK_CHARS:-220}"
       KITTEN_CLEAN_TEXT: "${KITTEN_CLEAN_TEXT:-1}"
       KITTEN_MODEL_DIR: /models/kitten
-      KITTEN_MODEL_ID: "${KITTEN_MODEL_ID:-KittenML/kitten-tts-mini-0.8}"
+      KITTEN_MODEL_ID: "${KITTEN_MODEL_ID:-KittenML/kitten-tts-nano-0.8}"
+      KITTEN_MODEL_NAME: "${KITTEN_MODEL_NAME:-Nano 15M}"
       KITTEN_OUTPUT_DIR: /app/output/kitten
       KITTEN_PAUSE_MS: "${KITTEN_PAUSE_MS:-220}"
       KITTEN_SPEED: "${KITTEN_SPEED:-1.0}"
@@ -308,6 +309,53 @@ services:
       - ./prompt.txt:/workspace/prompt.txt:ro
       - ./.cache/huggingface:/models/huggingface
       - ./.cache/kitten:/models/kitten
+      - ./.cache/torch:/models/torch
+
+  supertonic:
+    profiles:
+      - supertonic
+    build:
+      context: .
+      dockerfile: Dockerfile.supertonic
+      args:
+        PYTORCH_INDEX_URL: "${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
+        TORCH_VERSION: "${TORCH_VERSION:-2.11.0}"
+        ORT_INDEX_URL: "${ORT_INDEX_URL:-https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-13-nightly/pypi/simple/}"
+        ORT_PRE: "${ORT_PRE:-1}"
+    image: supertonic3-local:cu13
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_HOME: /models/huggingface
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: "${TTS_GPU:-0}"
+      SUPERTONIC_CACHE_DIR: /models/supertonic-cache/supertonic3
+      SUPERTONIC_CHUNK_CHARS: "${SUPERTONIC_CHUNK_CHARS:-220}"
+      SUPERTONIC_LANGUAGE: "${SUPERTONIC_LANGUAGE:-en}"
+      SUPERTONIC_MODEL_DIR: /models/supertonic-cache/supertonic3
+      SUPERTONIC_MODEL_NAME: "${SUPERTONIC_MODEL_NAME:-supertonic-3}"
+      SUPERTONIC_OUTPUT_DIR: /app/output/supertonic
+      SUPERTONIC_PAUSE_MS: "${SUPERTONIC_PAUSE_MS:-220}"
+      SUPERTONIC_SPEED: "${SUPERTONIC_SPEED:-1.0}"
+      SUPERTONIC_TOTAL_STEPS: "${SUPERTONIC_TOTAL_STEPS:-8}"
+      SUPERTONIC_USE_CUDA: "${SUPERTONIC_USE_CUDA:-1}"
+      SUPERTONIC_VOICE_ID: "${SUPERTONIC_VOICE_ID:-F1}"
+      SUPERTONIC_VOICE_NAME: "${SUPERTONIC_VOICE_NAME:-Female F1}"
+      TQDM_DISABLE: "1"
+      TORCH_HOME: /models/torch
+    gpus:
+      - driver: nvidia
+        device_ids:
+          - "${TTS_GPU:-0}"
+        capabilities:
+          - gpu
+    volumes:
+      - ./output:/app/output
+      - ./xtts_service:/app/xtts_service:ro
+      - ./supertonic_service:/app/supertonic_service:ro
+      - ./prompt.txt:/workspace/prompt.txt:ro
+      - ./.cache/huggingface:/models/huggingface
+      - ./.cache/supertonic:/models/supertonic-cache
       - ./.cache/torch:/models/torch
 
   chatterbox:

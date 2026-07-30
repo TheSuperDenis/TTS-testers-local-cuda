@@ -1,7 +1,7 @@
 import re
 import unittest
 
-from kitten_service.cli import DEFAULT_MODEL_ID, DEFAULT_VOICE_ID, output_name, split_kitten_text
+from kitten_service.cli import DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME, DEFAULT_VOICE_ID, output_name, split_kitten_text
 
 
 def compact(value: str) -> str:
@@ -10,7 +10,8 @@ def compact(value: str) -> str:
 
 class KittenCliTests(unittest.TestCase):
     def test_default_model_and_voice_are_kitten_female(self):
-        self.assertEqual(DEFAULT_MODEL_ID, "KittenML/kitten-tts-mini-0.8")
+        self.assertEqual(DEFAULT_MODEL_ID, "KittenML/kitten-tts-nano-0.8")
+        self.assertEqual(DEFAULT_MODEL_NAME, "Nano 15M")
         self.assertTrue(DEFAULT_VOICE_ID.endswith("-f"))
 
     def test_dialogue_lines_stay_separate(self):

@@ -14,7 +14,8 @@ from pathlib import Path
 from xtts_service.text_splitter import split_long_text
 
 
-DEFAULT_MODEL_ID = "KittenML/kitten-tts-mini-0.8"
+DEFAULT_MODEL_ID = "KittenML/kitten-tts-nano-0.8"
+DEFAULT_MODEL_NAME = "Nano 15M"
 DEFAULT_VOICE_ID = "expr-voice-2-f"
 DEFAULT_VOICE_NAME = "Bella"
 DEFAULT_CHUNK_CHARS = 220
@@ -27,6 +28,7 @@ PROMPT = "kittentts> "
 @dataclass
 class RuntimeConfig:
     model_id: str
+    model_name: str
     output_dir: Path
     model_dir: Path
     voice_id: str
@@ -55,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = RuntimeConfig(
         model_id=args.model_id,
+        model_name=args.model_name,
         output_dir=Path(args.output_dir),
         model_dir=Path(args.model_dir),
         voice_id=args.voice_id,
@@ -101,6 +104,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--text", help="Synthesize one text string and exit.")
     parser.add_argument("--prompt-file", help="Read one UTF-8 text file and exit.")
     parser.add_argument("--model-id", default=os.getenv("KITTEN_MODEL_ID", DEFAULT_MODEL_ID))
+    parser.add_argument("--model-name", default=os.getenv("KITTEN_MODEL_NAME", DEFAULT_MODEL_NAME))
     parser.add_argument("--output-dir", default=os.getenv("KITTEN_OUTPUT_DIR", "/app/output/kitten"))
     parser.add_argument("--model-dir", default=os.getenv("KITTEN_MODEL_DIR", "/models/kitten"))
     parser.add_argument("--voice-id", default=os.getenv("KITTEN_VOICE_ID", DEFAULT_VOICE_ID))
@@ -147,7 +151,7 @@ def load_runtime(config: RuntimeConfig) -> KittenRuntime:
     print(f"ONNX Runtime {ort.__version__} providers: {providers}", flush=True)
     print(f"Using KittenTTS voice: {config.voice_name} ({config.voice_id})", flush=True)
     print("KittenTTS uses preset voices and does not use the local reference WAV or transcript.", flush=True)
-    print(f"Loading {config.model_id} on {backend}...", flush=True)
+    print(f"Loading KittenTTS {config.model_name} ({config.model_id}) on {backend}...", flush=True)
     loaded_at = time.perf_counter()
     provider_list = ["CUDAExecutionProvider", "CPUExecutionProvider"] if config.use_cuda else ["CPUExecutionProvider"]
     model = load_kitten_model(config, ort=ort, providers=provider_list)
@@ -410,6 +414,7 @@ def write_metadata(
         "clean_text": config.clean_text,
         "elapsed_seconds": round(elapsed_seconds, 3),
         "model_id": config.model_id,
+        "model_name": config.model_name,
         "onnxruntime_providers": runtime.onnxruntime_providers,
         "onnxruntime_version": runtime.onnxruntime_version,
         "pause_ms": config.pause_ms,

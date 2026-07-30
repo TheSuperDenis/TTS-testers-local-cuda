@@ -1,0 +1,26 @@
+[
+  {
+    "id": "nano",
+    "displayName": "Nano 15M",
+    "modelId": "KittenML/kitten-tts-nano-0.8",
+    "parameters": "15M",
+    "downloadSizeMb": 56,
+    "order": 1
+  },
+  {
+    "id": "micro",
+    "displayName": "Micro 40M",
+    "modelId": "KittenML/kitten-tts-micro-0.8",
+    "parameters": "40M",
+    "downloadSizeMb": 41,
+    "order": 2
+  },
+  {
+    "id": "mini",
+    "displayName": "Mini 80M",
+    "modelId": "KittenML/kitten-tts-mini-0.8",
+    "parameters": "80M",
+    "downloadSizeMb": 80,
+    "order": 3
+  }
+]

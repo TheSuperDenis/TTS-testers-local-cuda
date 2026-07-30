@@ -108,5 +108,65 @@
     "voiceName": "en_GB Southern English Female low",
     "modelFile": "en/en_GB/southern_english_female/low/en_GB-southern_english_female-low.onnx",
     "configFile": "en/en_GB/southern_english_female/low/en_GB-southern_english_female-low.onnx.json"
+  },
+  {
+    "id": "de-thorsten",
+    "region": "all-high",
+    "regionLabel": "German high-quality",
+    "displayName": "Thorsten",
+    "quality": "high",
+    "voiceName": "de_DE Thorsten high",
+    "modelFile": "de/de_DE/thorsten/high/de_DE-thorsten-high.onnx",
+    "configFile": "de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json"
+  },
+  {
+    "id": "us-libritts",
+    "region": "all-high",
+    "regionLabel": "American English high-quality",
+    "displayName": "LibriTTS",
+    "quality": "high",
+    "voiceName": "en_US LibriTTS high",
+    "modelFile": "en/en_US/libritts/high/en_US-libritts-high.onnx",
+    "configFile": "en/en_US/libritts/high/en_US-libritts-high.onnx.json"
+  },
+  {
+    "id": "us-ryan",
+    "region": "all-high",
+    "regionLabel": "American English high-quality",
+    "displayName": "Ryan",
+    "quality": "high",
+    "voiceName": "en_US Ryan high",
+    "modelFile": "en/en_US/ryan/high/en_US-ryan-high.onnx",
+    "configFile": "en/en_US/ryan/high/en_US-ryan-high.onnx.json"
+  },
+  {
+    "id": "es-ar-daniela",
+    "region": "all-high",
+    "regionLabel": "Argentinian Spanish high-quality",
+    "displayName": "Daniela",
+    "quality": "high",
+    "voiceName": "es_AR Daniela high",
+    "modelFile": "es/es_AR/daniela/high/es_AR-daniela-high.onnx",
+    "configFile": "es/es_AR/daniela/high/es_AR-daniela-high.onnx.json"
+  },
+  {
+    "id": "es-mx-claude",
+    "region": "all-high",
+    "regionLabel": "Mexican Spanish high-quality",
+    "displayName": "Claude",
+    "quality": "high",
+    "voiceName": "es_MX Claude high",
+    "modelFile": "es/es_MX/claude/high/es_MX-claude-high.onnx",
+    "configFile": "es/es_MX/claude/high/es_MX-claude-high.onnx.json"
+  },
+  {
+    "id": "kk-issai",
+    "region": "all-high",
+    "regionLabel": "Kazakh high-quality",
+    "displayName": "Issai",
+    "quality": "high",
+    "voiceName": "kk_KZ Issai high",
+    "modelFile": "kk/kk_KZ/issai/high/kk_KZ-issai-high.onnx",
+    "configFile": "kk/kk_KZ/issai/high/kk_KZ-issai-high.onnx.json"
   }
 ]

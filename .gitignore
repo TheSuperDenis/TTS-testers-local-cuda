@@ -21,6 +21,11 @@
 
 # Local voice references and prompts
 /*.wav
+/*.flac
+/*.m4a
+/*.mp3
+/*.ogg
+/*.opus
 /reference.txt
 /voice-reference.txt
 /transcript.txt

@@ -14,9 +14,10 @@ Included model containers:
 - `qwen`: Qwen3-TTS 12Hz 0.6B Base voice clone, plus official Qwen CustomVoice female presets.
 - `miotts`: MioTTS 0.1B voice clone, plus the official MioTTS English female preset embedding.
 - `luxtts`: LuxTTS 100M voice clone. No official female preset catalog is bundled.
-- `piper`: Piper TTS preset voice picker with American female and British female options. Piper does not do zero-shot voice cloning.
+- `piper`: Piper TTS preset voice picker with American female, British female, and all high-quality upstream preset options. Piper does not do zero-shot voice cloning.
 - `kokoro`: Kokoro-82M preset voice picker with all American female and British female presets from the model. Kokoro does not do zero-shot voice cloning.
-- `kitten`: KittenTTS 80M preset voice picker with all female presets from the model. KittenTTS does not do zero-shot voice cloning.
+- `kitten`: KittenTTS Nano 15M, Micro 40M, or Mini 80M ONNX model picker with all female presets. KittenTTS does not do zero-shot voice cloning.
+- `supertonic`: Supertonic 3 99M multilingual ONNX model with all five official female preset styles. The open-weight package does not perform local reference-WAV cloning.
 - `chatterbox`: Resemble AI Chatterbox 500M voice clone, plus the official built-in default voice fallback.
 - `sopro`: SoproTTS 135M English voice clone. No official female preset catalog is bundled.
 - `pockettts`: Kyutai PocketTTS 100M voice clone, plus selected official English built-in voices. PocketTTS is CPU-first upstream.
@@ -71,6 +72,8 @@ No full machine details are published here.
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | LuxTTS 100M | 87 chars | ~18.2s load + voice prompt prep | 7.55s | 3.94s | 0.52x | Fast after load; tuned slower to reduce skipped words. |
 | Piper en_GB Cori high | 60 chars | ~2.8s cached preset voice load | 4.0s | 1.08s | 0.28x | Preset British English voice; no zero-shot clone prep. |
+| Supertonic 3 F1 | 73 chars | ~13.5s first cached CUDA load | 5.6s | 1.0s | 0.18x | All four ONNX sessions reported CUDA; fixed female preset, no local WAV cloning. |
+| KittenTTS Nano 15M Bella | 55 chars | ~12.7s first model load | 6.8s | 2.8s | 0.42x | Smallest Kitten 0.8 checkpoint; ONNX Runtime CUDA. |
 | PocketTTS Alba | 59 chars | ~10.4s load + 1.2s voice load | 5.8s | 3.1s | 0.54x | CPU-first preset path; no RTX 5070 GPU reservation. |
 | SoproTTS 135M clone | 45 chars | ~45.3s load + 3.3s voice prep | 3.4s | 2.4s | 0.71x | Real voice-clone path; faster synthesis after load than most clone models here. |
 | Kokoro-82M bf_emma | 63 chars | ~7.2s cached preset voice load | 4.4s | 5.1s | 1.15x | Preset British English voice; no zero-shot clone prep. |
@@ -91,7 +94,7 @@ reference.wav
 reference.txt
 ```
 
-`reference.wav` should be a clean sample of the target voice. `reference.txt` should contain the exact words spoken in that WAV. F5-TTS uses both files and is a good fit for American or British female reference samples. Chatterbox, SoproTTS, PocketTTS, and MOSS-TTS-Nano use the WAV but do not need the transcript. Piper, Kokoro, and KittenTTS do not use these files because they use configured preset voices instead of zero-shot cloning.
+`reference.wav` should be a clean sample of the target voice. `reference.txt` should contain the exact words spoken in that WAV. F5-TTS uses both files and is a good fit for American or British female reference samples. Chatterbox, SoproTTS, PocketTTS, and MOSS-TTS-Nano use the WAV but do not need the transcript. Piper, Kokoro, KittenTTS, and Supertonic 3 do not use these files because they use configured preset voices instead of zero-shot cloning.
 
 Private voice-clone inputs are runtime inputs only. Do not put proprietary voice samples, transcripts, API keys, or per-user clone settings in Python files or commits. If another app stores the selected clone settings in a database, pass those resolved local file paths into this launcher at runtime with `-Speaker` and `-ReferenceText`, or through the model-specific environment variables.
 
@@ -103,7 +106,7 @@ Private voice-clone inputs are runtime inputs only. Do not put proprietary voice
 .\run.ps1
 ```
 
-The menu asks which model to run. For clone-capable models, the first voice option is always your local reference voice clone. If the upstream model publishes usable female presets, those appear after the clone option. If you choose Piper, Kokoro, or KittenTTS, the launcher asks which preset voice to load. After the selected model loads, type text and press Enter.
+The menu asks which model to run. For clone-capable models, the first voice option is always your local reference voice clone. If the upstream model publishes usable female presets, those appear after the clone option. Piper, Kokoro, KittenTTS, and Supertonic 3 ask which preset voice to load. KittenTTS first asks whether to use Nano 15M, Micro 40M, or Mini 80M. After the selected model loads, type text and press Enter.
 
 Do not type synthesis text while a model is still downloading or loading. Wait for the model-specific `READY` line and prompt:
 
@@ -115,6 +118,7 @@ luxtts100m>
 piper>
 kokoro82m>
 kittentts>
+supertonic3>
 chatterbox>
 soprotts>
 pockettts>
@@ -132,6 +136,7 @@ output/luxtts/
 output/piper/
 output/kokoro/
 output/kitten/
+output/supertonic/
 output/chatterbox/
 output/sopro/
 output/pockettts/
@@ -378,7 +383,7 @@ F5TTS_SWAY_SAMPLING_COEF=-1.0
 
 The wrapper preserves pasted dialogue lines as separate turns, splits long sentences around clauses, and writes WAV/JSON files under `output/f5tts`.
 
-Piper uses the public `rhasspy/piper-voices` ONNX voice set. The PowerShell launcher includes a small curated picker and chooses the highest available quality for each listed voice.
+Piper uses the public `rhasspy/piper-voices` ONNX voice set. The PowerShell launcher includes the original American/British female picker plus every official `high` quality voice at the pinned `v1.0.0` model revision.
 
 | Group | Voice | Quality used |
 | --- | --- | --- |
@@ -394,11 +399,26 @@ Piper uses the public `rhasspy/piper-voices` ONNX voice set. The PowerShell laun
 | British female | Jenny Dioco | medium |
 | British female | Southern English Female | low |
 
+All high-quality Piper voices exposed by the picker:
+
+| Voice id | Voice | Model path |
+| --- | --- | --- |
+| `de-thorsten` | German Thorsten high | `de/de_DE/thorsten/high/de_DE-thorsten-high.onnx` |
+| `gb-cori` | British English Cori high | `en/en_GB/cori/high/en_GB-cori-high.onnx` |
+| `us-lessac` | American English Lessac high | `en/en_US/lessac/high/en_US-lessac-high.onnx` |
+| `us-libritts` | American English LibriTTS high | `en/en_US/libritts/high/en_US-libritts-high.onnx` |
+| `us-ljspeech` | American English LJSpeech high | `en/en_US/ljspeech/high/en_US-ljspeech-high.onnx` |
+| `us-ryan` | American English Ryan high | `en/en_US/ryan/high/en_US-ryan-high.onnx` |
+| `es-ar-daniela` | Argentinian Spanish Daniela high | `es/es_AR/daniela/high/es_AR-daniela-high.onnx` |
+| `es-mx-claude` | Mexican Spanish Claude high | `es/es_MX/claude/high/es_MX-claude-high.onnx` |
+| `kk-issai` | Kazakh Issai high | `kk/kk_KZ/issai/high/kk_KZ-issai-high.onnx` |
+
 You can also skip the picker and launch a known catalog id:
 
 ```powershell
 .\run.ps1 -Model piper -PiperVoice gb-cori
 .\run.ps1 -Model piper -PiperVoice us-ljspeech
+.\run.ps1 -Model piper -PiperVoice de-thorsten
 ```
 
 The catalog lives in `piper_service/voice_catalog.json`. Advanced users can still override the exact files with `PIPER_MODEL_FILE`, `PIPER_CONFIG_FILE`, and `PIPER_VOICE_NAME`.
@@ -453,7 +473,15 @@ KOKORO_SPEED=0.95
 
 The Kokoro splitter preserves pasted dialogue lines as separate turns and splits long sentences around clauses before falling back to word splits.
 
-KittenTTS uses the official `KittenML/kitten-tts-mini-0.8` 80M ONNX model by default. The launcher includes all female presets listed for the model:
+KittenTTS uses the official 0.8 ONNX checkpoints. After choosing KittenTTS, the launcher asks which model size to load:
+
+| Size id | Model | Parameters | Published download size |
+| --- | --- | ---: | ---: |
+| `nano` | `KittenML/kitten-tts-nano-0.8` | 15M | 56 MB |
+| `micro` | `KittenML/kitten-tts-micro-0.8` | 40M | 41 MB |
+| `mini` | `KittenML/kitten-tts-mini-0.8` | 80M | 80 MB |
+
+Nano is the default for direct Docker runs and the first PowerShell choice. All three checkpoints expose the same female presets:
 
 | Voice id | Voice | Internal id |
 | --- | --- | --- |
@@ -462,23 +490,59 @@ KittenTTS uses the official `KittenML/kitten-tts-mini-0.8` 80M ONNX model by def
 | `rosie` | Rosie | `expr-voice-4-f` |
 | `kiki` | Kiki | `expr-voice-5-f` |
 
-You can skip the KittenTTS picker and launch a known voice id:
+You can skip both KittenTTS pickers by supplying a size and voice id:
 
 ```powershell
-.\run.ps1 -Model kitten -KittenVoice bella
-.\run.ps1 -Model kitten -KittenVoice luna
+.\run.ps1 -Model kitten -KittenSize nano -KittenVoice bella
+.\run.ps1 -Model kitten -KittenSize micro -KittenVoice luna
+.\run.ps1 -Model kitten -KittenSize mini -KittenVoice rosie
 ```
 
 KittenTTS defaults:
 
 ```text
-KITTEN_MODEL_ID=KittenML/kitten-tts-mini-0.8
+KITTEN_MODEL_ID=KittenML/kitten-tts-nano-0.8
+KITTEN_MODEL_NAME=Nano 15M
 KITTEN_CHUNK_CHARS=220
 KITTEN_PAUSE_MS=220
 KITTEN_SPEED=1.0
 ```
 
 KittenTTS is wired for ONNX Runtime CUDA with the same CUDA 13 path used by Piper. If you need the CUDA 12.8 path, run the launcher with `-Cuda128`.
+
+Supertonic 3 uses the official `Supertone/supertonic-3` 99M ONNX assets and the pinned `supertonic==1.3.1` Python package. The launcher exposes the complete official female preset set:
+
+| Voice id | Voice |
+| --- | --- |
+| `f1` | Female F1 |
+| `f2` | Female F2 |
+| `f3` | Female F3 |
+| `f4` | Female F4 |
+| `f5` | Female F5 |
+
+Upstream identifies these styles only as F1 through F5. This repo does not invent American, British, breathy, sultry, pitch, or quality labels for them. The open-weight package uses fixed styles and does not turn the local reference WAV into a clone. Supertone's separate Voice Builder export workflow is not integrated.
+
+Supertonic 3 supports 31 languages. English is the PowerShell default, and a different supported ISO language code can be passed directly:
+
+```powershell
+.\run.ps1 -Model supertonic -SupertonicVoice f1
+.\run.ps1 -Model supertonic -SupertonicVoice f3 -SupertonicLanguage en
+```
+
+Supertonic defaults:
+
+```text
+SUPERTONIC_MODEL_NAME=supertonic-3
+SUPERTONIC_LANGUAGE=en
+SUPERTONIC_CHUNK_CHARS=220
+SUPERTONIC_PAUSE_MS=220
+SUPERTONIC_SPEED=1.0
+SUPERTONIC_TOTAL_STEPS=8
+```
+
+The upstream Python SDK currently defaults its ONNX sessions to CPU. This Docker wrapper explicitly selects `CUDAExecutionProvider` and exits during startup if any of Supertonic's four ONNX sessions lacks CUDA, preventing an unnoticed CPU fallback. A local hold-open observation added roughly 776 MiB to RTX 5070 memory use, but Docker Desktop reported per-process GPU memory as `N/A` and other running GPU workloads can affect the total. Treat that number as a rough local observation, not a hard VRAM guarantee.
+
+The Supertonic source package is MIT licensed and the `Supertone/supertonic-3` model weights use OpenRAIL-M. Review the upstream model license before distributing outputs or using the model outside local evaluation.
 
 ## Useful Options
 
@@ -494,7 +558,9 @@ KittenTTS is wired for ONNX Runtime CUDA with the same CUDA 13 path used by Pipe
 .\run.ps1 -Model kokoro
 .\run.ps1 -Model kokoro -KokoroVoice af_heart
 .\run.ps1 -Model kitten
-.\run.ps1 -Model kitten -KittenVoice bella
+.\run.ps1 -Model kitten -KittenSize nano -KittenVoice bella
+.\run.ps1 -Model supertonic
+.\run.ps1 -Model supertonic -SupertonicVoice f1
 .\run.ps1 -Model chatterbox
 .\run.ps1 -Model chatterbox -ChatterboxVoice builtin-default
 .\run.ps1 -Model sopro
